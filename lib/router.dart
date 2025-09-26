@@ -5,6 +5,12 @@ import 'HomeScreen.dart';
 import 'AgeGateScreen.dart';
 import 'SignInScreen.dart';
 import 'SignUpScreen.dart';
+import 'CrearCerveza.dart';
+import 'TopDegustaciones.dart';
+import 'Galardones.dart';
+import 'ActivityFeedScreen.dart';
+import 'PerfilAjustes.dart';
+
 
 final appRouter = GoRouter(
   initialLocation: '/auth',
@@ -35,5 +41,36 @@ final appRouter = GoRouter(
         return SignUpScreen(dob: dob);
       },
     ),
+
+    // Nueva degustación
+    GoRoute(
+      path: '/tastings/new',
+      builder: (context, state) => const CrearCervezaScreen(),
+    ),
+
+    // Top degustaciones
+    GoRoute(
+      path: '/tastings/top',
+      builder: (context, state) => const TopDegustacionesScreen(),
+    ),
+
+    // Perfil / Ajustes
+GoRoute(
+  path: '/profile',
+  builder: (context, state) => const PerfilAjustesScreen(),
+),
+
+
+    // Galardones
+    GoRoute(
+      path: '/badges',
+      builder: (context, state) => const GalardonesScreen(),
+    ),
+
+    // Actividad pública/amigos
+GoRoute(
+  path: '/activities',
+  builder: (context, state) => const ActivityFeedScreen(),
+),
   ],
 );

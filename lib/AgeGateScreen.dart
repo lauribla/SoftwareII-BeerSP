@@ -53,7 +53,11 @@ class _AgeGateScreenState extends State<AgeGateScreen> {
               onPressed: isAdult && dob != null
                   ? () => context.go('/auth/signup', extra: dob)
                   : null,
-              child: const Text('Continuar'),
+              child: const Text('Crear cuenta'),
+            ),
+            TextButton(
+              onPressed: isAdult ? () => context.go('/auth/signin') : null,
+              child: const Text('Ya tengo cuenta, Iniciar sesión'),
             ),
             if (dob != null && !isAdult)
               const Padding(
