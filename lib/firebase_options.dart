@@ -85,4 +85,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'beersp-deb52.firebasestorage.app',
     measurementId: 'G-2XS2FNQLEX',
   );
+
 }
