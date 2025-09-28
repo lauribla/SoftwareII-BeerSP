@@ -97,7 +97,7 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Perfil / Ajustes"),
-        leading: BackButton(onPressed: () => context.pop()), // 🔙 volver atrás
+        leading: BackButton(onPressed: () => context.go('/')), // 🔙 volver atrás
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
