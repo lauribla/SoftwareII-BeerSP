@@ -122,61 +122,90 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 16),
 
             // Panel de actividades de amigos (últimas 5)
-            if (uid != null)
-              StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                stream: _loadActivities(uid),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Card(
-                      child: ListTile(
-                        leading: CircularProgressIndicator(),
-                        title: Text('Cargando actividades...'),
-                      ),
+if (uid != null)
+  StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+    stream: _loadActivities(uid),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Card(
+          child: ListTile(
+            leading: CircularProgressIndicator(),
+            title: Text('Cargando actividades...'),
+          ),
+        );
+      }
+
+      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        return const Card(
+          child: ListTile(
+            leading: Icon(Icons.history),
+            title: Text('No hay actividades aún'),
+          ),
+        );
+      }
+
+      final docs = snapshot.data!.docs;
+
+      return Card(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const ListTile(
+              title: Text('Actividad de amigos'),
+              subtitle: Text('Últimas 5 actividades'),
+            ),
+            for (final doc in docs)
+              FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                future: FirebaseFirestore.instance
+                    .collection('beers')
+                    .doc(doc['targetIds']?['beerId'])
+                    .get(),
+                builder: (context, beerSnap) {
+                  final createdAt =
+                      (doc['createdAt'] as Timestamp?)?.toDate();
+                  if (beerSnap.connectionState == ConnectionState.waiting) {
+                    return const ListTile(
+                      leading: Icon(Icons.local_drink),
+                      title: Text("Cargando actividad..."),
                     );
                   }
 
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return const Card(
-                      child: ListTile(
-                        leading: Icon(Icons.history),
-                        title: Text('No hay actividades aún'),
-                      ),
-                    );
+                  String description = doc['type'] ?? 'actividad';
+                  if (doc['type'] == 'tasting' &&
+                      beerSnap.hasData &&
+                      beerSnap.data!.exists) {
+                    final beer = beerSnap.data!.data()!;
+                    final beerName = beer['name'] ?? 'Cerveza';
+                    final style = beer['style'] ?? '—';
+                    description = "Degustación: $beerName ($style)";
                   }
 
-                  final docs = snapshot.data!.docs;
-
-                  return Card(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const ListTile(
-                          title: Text('Actividad de amigos'),
-                          subtitle: Text('Últimas 5 actividades'),
-                        ),
-                        for (final doc in docs)
-                          ListTile(
-                            leading: const Icon(Icons.local_drink),
-                            title: Text(doc['type'] ?? 'actividad'),
-                            subtitle: Text(
-                              (doc['createdAt'] as Timestamp?)?.toDate().toString() ??
-                                  'sin fecha',
-                            ),
-                          ),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () {
-                              context.go('/activities');
-                            },
-                            child: const Text('Ver todas'),
-                          ),
-                        ),
-                      ],
+                  return ListTile(
+                    leading: const Icon(Icons.local_drink),
+                    title: Text(description),
+                    subtitle: Text(
+                      createdAt != null
+                          ? createdAt.toLocal().toString().split(' ')[0]
+                          : 'sin fecha',
                     ),
                   );
                 },
               ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () {
+                  context.go('/activities');
+                },
+                child: const Text('Ver todas'),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  ),
+
 
             const SizedBox(height: 16),
 

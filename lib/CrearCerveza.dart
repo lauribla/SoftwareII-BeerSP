@@ -6,7 +6,6 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 
-
 class CrearCervezaScreen extends StatefulWidget {
   const CrearCervezaScreen({super.key});
 
@@ -16,16 +15,11 @@ class CrearCervezaScreen extends StatefulWidget {
 
 class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
   final _formKey = GlobalKey<FormState>();
-
   final _nameCtrl = TextEditingController();
   final _styleCtrl = TextEditingController();
   final _countryCtrl = TextEditingController();
   final _ratingCtrl = TextEditingController();
   final _commentCtrl = TextEditingController();
-
-  final _venueNameCtrl = TextEditingController();
-  final _venueAddressCtrl = TextEditingController();
-
   File? _imageFile;
   bool _loading = false;
 
@@ -37,118 +31,86 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
     }
   }
 
-  Future<String?> _uploadImage(String tastingId) async {
+  Future<String?> _uploadImage(String beerId) async {
     if (_imageFile == null) return null;
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-
-    final ref = FirebaseStorage.instance
-        .ref()
-        .child("tastings")
-        .child(uid)
-        .child("$tastingId.jpg");
-
+    final ref = FirebaseStorage.instance.ref().child("beers/$beerId.jpg");
     await ref.putFile(_imageFile!);
     return await ref.getDownloadURL();
   }
 
   Future<void> _saveTasting() async {
     if (!_formKey.currentState!.validate()) return;
+
     setState(() => _loading = true);
 
     try {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid == null) throw Exception("Usuario no logueado");
+      final myUid = FirebaseAuth.instance.currentUser!.uid;
 
-      // 1. Buscar si existe cerveza con ese nombre
-      final beerQuery = await FirebaseFirestore.instance
-          .collection('beers')
+      // === 1. GUARDAR CERVEZA EN "beers" ===
+      final beersRef = FirebaseFirestore.instance.collection('beers');
+      final query = await beersRef
           .where('name', isEqualTo: _nameCtrl.text.trim())
           .limit(1)
           .get();
 
       String beerId;
-      if (beerQuery.docs.isEmpty) {
-        final beerRef =
-            await FirebaseFirestore.instance.collection('beers').add({
+      if (query.docs.isEmpty) {
+        final newBeer = await beersRef.add({
           'name': _nameCtrl.text.trim(),
           'style': _styleCtrl.text.trim(),
           'originCountry': _countryCtrl.text.trim(),
-          'createdBy': uid,
+          'createdBy': myUid,
           'createdAt': FieldValue.serverTimestamp(),
           'ratingAvg': 0,
           'ratingCount': 0,
         });
-        beerId = beerRef.id;
+        beerId = newBeer.id;
       } else {
-        beerId = beerQuery.docs.first.id;
+        beerId = query.docs.first.id;
       }
 
-      // 2. Crear o buscar venue
-      String? venueId;
-      if (_venueNameCtrl.text.trim().isNotEmpty) {
-        final venueQuery = await FirebaseFirestore.instance
-            .collection('venues')
-            .where('name', isEqualTo: _venueNameCtrl.text.trim())
-            .limit(1)
-            .get();
+      // Subir foto (opcional)
+      final photoUrl = await _uploadImage(beerId);
 
-        if (venueQuery.docs.isEmpty) {
-          final venueRef =
-              await FirebaseFirestore.instance.collection('venues').add({
-            'name': _venueNameCtrl.text.trim(),
-            'address': _venueAddressCtrl.text.trim(),
-            'country': _countryCtrl.text.trim(),
-            'createdBy': uid,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-          venueId = venueRef.id;
-        } else {
-          venueId = venueQuery.docs.first.id;
-        }
-      }
-
-      // 3. Crear tasting
-      final rating =
-          double.tryParse(_ratingCtrl.text.trim().replaceAll(',', '.')) ?? 0;
-
+      // === 2. GUARDAR DEGUSTACIÓN EN "tastings" ===
       final tastingRef =
           await FirebaseFirestore.instance.collection('tastings').add({
-        'userUid': uid,
+        'userUid': myUid,
         'beerId': beerId,
-        'venueId': venueId,
-        'rating': rating,
+        'rating': double.tryParse(_ratingCtrl.text.trim()) ?? 0,
         'comment': _commentCtrl.text.trim(),
+        'photoUrl': photoUrl,
         'createdAt': FieldValue.serverTimestamp(),
-        'photoUrl': null,
       });
 
-      // 4. Subir foto si hay
-      final photoUrl = await _uploadImage(tastingRef.id);
-      if (photoUrl != null) {
-        await tastingRef.update({'photoUrl': photoUrl});
-      }
-
-      // 5. Registrar actividad
+      // === 3. AÑADIR ACTIVIDAD EN "activities" ===
       await FirebaseFirestore.instance.collection('activities').add({
         'type': 'tasting',
-        'actorUid': uid,
+        'actorUid': myUid,
         'targetIds': {
           'beerId': beerId,
-          'tastingId': tastingRef.id,
-          'venueId': venueId
+          'tastingId': tastingRef.id, // 👈 id de la degustación recién creada
         },
         'createdAt': FieldValue.serverTimestamp(),
         'public': true,
       });
 
-      if (mounted) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('Degustación registrada')),
-  );
-  // Vuelve al Home en lugar de quedarse en blanco
-  context.go('/');
-}
+      // === 4. ACTUALIZAR ESTADÍSTICAS DEL USUARIO ===
+      final userRef =
+          FirebaseFirestore.instance.collection('users').doc(myUid);
+      await userRef.set({
+        'stats': {
+          'tastingsTotal': FieldValue.increment(1),
+          'tastings7d': FieldValue.increment(1),
+        }
+      }, SetOptions(merge: true));
 
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Degustación registrada')),
+        );
+        context.go('/'); // volver al Home
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
@@ -170,13 +132,13 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
             children: [
               TextFormField(
                 controller: _nameCtrl,
-                decoration: const InputDecoration(labelText: "Nombre de la cerveza"),
+                decoration: const InputDecoration(labelText: "Nombre cerveza"),
                 validator: (v) =>
                     v == null || v.isEmpty ? "Introduce un nombre" : null,
               ),
               TextFormField(
                 controller: _styleCtrl,
-                decoration: const InputDecoration(labelText: "Estilo (ej: IPA, Lager...)"),
+                decoration: const InputDecoration(labelText: "Estilo"),
               ),
               TextFormField(
                 controller: _countryCtrl,
@@ -184,33 +146,21 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
               ),
               TextFormField(
                 controller: _ratingCtrl,
+                decoration: const InputDecoration(labelText: "Valoración (0-5)"),
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: "Valoración (0–5)"),
               ),
               TextFormField(
                 controller: _commentCtrl,
                 decoration: const InputDecoration(labelText: "Comentario"),
                 maxLines: 3,
               ),
-              const SizedBox(height: 20),
-              const Divider(),
-              const Text("Asociar a un local (opcional)",
-                  style: TextStyle(fontWeight: FontWeight.bold)),
-              TextFormField(
-                controller: _venueNameCtrl,
-                decoration: const InputDecoration(labelText: "Nombre del local"),
-              ),
-              TextFormField(
-                controller: _venueAddressCtrl,
-                decoration: const InputDecoration(labelText: "Dirección del local"),
-              ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               if (_imageFile != null)
                 Image.file(_imageFile!, height: 150, fit: BoxFit.cover),
               TextButton.icon(
                 onPressed: _pickImage,
                 icon: const Icon(Icons.photo),
-                label: const Text("Añadir foto"),
+                label: const Text("Subir foto"),
               ),
               const SizedBox(height: 20),
               ElevatedButton(

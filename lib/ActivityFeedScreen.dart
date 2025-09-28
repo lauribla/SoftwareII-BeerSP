@@ -11,12 +11,6 @@ class ActivityFeedScreen extends StatelessWidget {
         .snapshots();
   }
 
-  Future<Map<String, dynamic>?> _loadDoc(String collection, String? id) async {
-    if (id == null) return null;
-    final snap = await FirebaseFirestore.instance.collection(collection).doc(id).get();
-    return snap.data();
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -29,7 +23,9 @@ class ActivityFeedScreen extends StatelessWidget {
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text("Todavía no hay actividades"));
+            return const Center(
+              child: Text("Todavía no hay actividades"),
+            );
           }
 
           final activities = snapshot.data!.docs;
@@ -40,48 +36,76 @@ class ActivityFeedScreen extends StatelessWidget {
               final data = activities[index].data();
               final type = data['type'] ?? 'actividad';
               final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
-              final targets = Map<String, dynamic>.from(data['targetIds'] ?? {});
+              final beerId = data['targetIds']?['beerId'];
 
-              return FutureBuilder(
-                future: _buildDescription(type, data['actorUid'], targets),
-                builder: (context, AsyncSnapshot<String> descSnap) {
-                  final description = descSnap.data ?? type.toString();
-                  return ListTile(
-                    leading: const Icon(Icons.local_activity, color: Colors.blue),
-                    title: Text(description),
-                    subtitle: Text(
-                      createdAt != null
-                          ? createdAt.toLocal().toString().split(' ')[0]
-                          : "sin fecha",
-                    ),
-                  );
-                },
+              if (type == 'tasting' && beerId != null) {
+                // FutureBuilder para sacar datos de la cerveza
+                return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                  future: FirebaseFirestore.instance
+                      .collection('beers')
+                      .doc(beerId)
+                      .get(),
+                  builder: (context, beerSnap) {
+                    if (beerSnap.connectionState == ConnectionState.waiting) {
+                      return const ListTile(
+                        leading: Icon(Icons.local_drink),
+                        title: Text("Cargando degustación..."),
+                      );
+                    }
+
+                    if (!beerSnap.hasData || !beerSnap.data!.exists) {
+                      return ListTile(
+                        leading: const Icon(Icons.error),
+                        title: const Text("Cerveza desconocida"),
+                        subtitle: Text(
+                          createdAt != null
+                              ? createdAt.toLocal().toString().split(' ')[0]
+                              : 'sin fecha',
+                        ),
+                      );
+                    }
+
+                    final beer = beerSnap.data!.data()!;
+                    final name = beer['name'] ?? 'Cerveza';
+                    final style = beer['style'] ?? '—';
+
+                    return ListTile(
+                      leading: const Icon(Icons.local_drink),
+                      title: Text("Degustación: $name"),
+                      subtitle: Text(
+                        "$style\n${createdAt != null ? createdAt.toLocal().toString().split(' ')[0] : 'sin fecha'}",
+                      ),
+                    );
+                  },
+                );
+              }
+
+              // Otros tipos de actividad
+              String description;
+              switch (type) {
+                case 'badgeEarned':
+                  description = "¡Galardón conseguido! 🏆";
+                  break;
+                case 'friendAccepted':
+                  description = "Nueva amistad aceptada 🤝";
+                  break;
+                default:
+                  description = type.toString();
+              }
+
+              return ListTile(
+                leading: const Icon(Icons.local_activity, color: Colors.blue),
+                title: Text(description),
+                subtitle: Text(
+                  createdAt != null
+                      ? createdAt.toLocal().toString().split(' ')[0]
+                      : 'sin fecha',
+                ),
               );
             },
           );
         },
       ),
     );
-  }
-
-  /// Genera la descripción enriquecida de la actividad
-  Future<String> _buildDescription(
-      String type, String? actorUid, Map<String, dynamic> targets) async {
-    // usuario
-    final user =
-        await _loadDoc('users', actorUid).then((d) => d?['username'] ?? 'Alguien');
-
-    switch (type) {
-      case 'tasting':
-        final beer =
-            await _loadDoc('beers', targets['beerId']).then((d) => d?['name'] ?? 'una cerveza');
-        return "$user registró una degustación de $beer 🍺";
-      case 'badgeEarned':
-        return "$user consiguió un galardón 🏆";
-      case 'friendAccepted':
-        return "$user aceptó una amistad 🤝";
-      default:
-        return "$user hizo una actividad";
-    }
   }
 }
