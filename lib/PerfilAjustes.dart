@@ -14,6 +14,7 @@ class PerfilAjustesScreen extends StatefulWidget {
 }
 
 class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _usernameCtrl = TextEditingController();
   final _bioCtrl = TextEditingController();
   File? _imageFile;
@@ -46,13 +47,17 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
   }
 
   Future<void> _saveProfile() async {
+    if (!_formKey.currentState!.validate()) return;
+
     setState(() => _loading = true);
     try {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid == null) throw Exception("Usuario no logueado");
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception("Usuario no logueado");
+      final uid = user.uid;
 
       String? photoUrl = await _uploadImage(uid);
 
+      // 🔄 Actualizar en Firestore
       await FirebaseFirestore.instance.collection('users').doc(uid).update({
         'username': _usernameCtrl.text.trim(),
         'bio': _bioCtrl.text.trim(),
@@ -60,11 +65,15 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
         'updatedAt': FieldValue.serverTimestamp(),
       });
 
+      // 🔄 También en FirebaseAuth
+      await user.updateDisplayName(_usernameCtrl.text.trim());
+      if (photoUrl != null) await user.updatePhotoURL(photoUrl);
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Perfil actualizado")),
         );
-        context.go('/');
+        context.pop(); // vuelve atrás al Home
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -83,61 +92,71 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Perfil / Ajustes")),
+      appBar: AppBar(
+        title: const Text("Perfil / Ajustes"),
+        leading: BackButton(onPressed: () => context.pop()), // 🔙 volver atrás
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            if (_imageFile != null)
-              CircleAvatar(
-                radius: 50,
-                backgroundImage: FileImage(_imageFile!),
-              )
-            else
-              FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                future: FirebaseFirestore.instance
-                    .collection('users')
-                    .doc(FirebaseAuth.instance.currentUser?.uid)
-                    .get(),
-                builder: (context, snapshot) {
-                  final photoUrl = snapshot.data?.data()?['photoUrl'];
-                  return CircleAvatar(
-                    radius: 50,
-                    backgroundImage:
-                        (photoUrl != null && photoUrl.isNotEmpty)
-                            ? NetworkImage(photoUrl)
-                            : null,
-                    child: (photoUrl == null || photoUrl.isEmpty)
-                        ? const Icon(Icons.person, size: 50)
-                        : null,
-                  );
-                },
+        child: Form(
+          key: _formKey,
+          child: ListView(
+            children: [
+              if (_imageFile != null)
+                CircleAvatar(
+                  radius: 50,
+                  backgroundImage: FileImage(_imageFile!),
+                )
+              else
+                FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                  future: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(uid)
+                      .get(),
+                  builder: (context, snapshot) {
+                    final photoUrl = snapshot.data?.data()?['photoUrl'];
+                    return CircleAvatar(
+                      radius: 50,
+                      backgroundImage: (photoUrl != null && photoUrl.isNotEmpty)
+                          ? NetworkImage(photoUrl)
+                          : null,
+                      child: (photoUrl == null || photoUrl.isEmpty)
+                          ? const Icon(Icons.person, size: 50)
+                          : null,
+                    );
+                  },
+                ),
+              TextButton.icon(
+                onPressed: _pickImage,
+                icon: const Icon(Icons.photo),
+                label: const Text("Cambiar foto"),
               ),
-            TextButton.icon(
-              onPressed: _pickImage,
-              icon: const Icon(Icons.photo),
-              label: const Text("Cambiar foto"),
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _usernameCtrl,
-              decoration: const InputDecoration(labelText: "Username"),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _bioCtrl,
-              decoration: const InputDecoration(labelText: "Bio"),
-              maxLines: 3,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _loading ? null : _saveProfile,
-              child: _loading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text("Guardar cambios"),
-            ),
-          ],
+              const SizedBox(height: 20),
+              TextFormField(
+                controller: _usernameCtrl,
+                decoration:
+                    const InputDecoration(labelText: "Nombre de usuario"),
+                validator: (v) =>
+                    v == null || v.isEmpty ? "Introduce un nombre" : null,
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _bioCtrl,
+                decoration: const InputDecoration(labelText: "Biografía"),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _loading ? null : _saveProfile,
+                child: _loading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text("Guardar cambios"),
+              ),
+            ],
+          ),
         ),
       ),
     );

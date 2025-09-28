@@ -22,6 +22,7 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
   final _commentCtrl = TextEditingController();
   File? _imageFile;
   bool _loading = false;
+  bool _isFavorite = false; // ⭐ Nuevo campo para favoritas
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -46,7 +47,7 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
     try {
       final myUid = FirebaseAuth.instance.currentUser!.uid;
 
-      // === 1. GUARDAR CERVEZA EN "beers" ===
+      // === 1. Guardar/obtener cerveza en "beers" ===
       final beersRef = FirebaseFirestore.instance.collection('beers');
       final query = await beersRef
           .where('name', isEqualTo: _nameCtrl.text.trim())
@@ -72,7 +73,7 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
       // Subir foto (opcional)
       final photoUrl = await _uploadImage(beerId);
 
-      // === 2. GUARDAR DEGUSTACIÓN EN "tastings" ===
+      // === 2. Guardar degustación en "tastings" ===
       final tastingRef =
           await FirebaseFirestore.instance.collection('tastings').add({
         'userUid': myUid,
@@ -81,21 +82,22 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
         'comment': _commentCtrl.text.trim(),
         'photoUrl': photoUrl,
         'createdAt': FieldValue.serverTimestamp(),
+        'isFavorite': _isFavorite, // ⭐ Aquí se guarda favorita o no
       });
 
-      // === 3. AÑADIR ACTIVIDAD EN "activities" ===
+      // === 3. Añadir actividad en "activities" ===
       await FirebaseFirestore.instance.collection('activities').add({
         'type': 'tasting',
         'actorUid': myUid,
         'targetIds': {
           'beerId': beerId,
-          'tastingId': tastingRef.id, // 👈 id de la degustación recién creada
+          'tastingId': tastingRef.id,
         },
         'createdAt': FieldValue.serverTimestamp(),
         'public': true,
       });
 
-      // === 4. ACTUALIZAR ESTADÍSTICAS DEL USUARIO ===
+      // === 4. Actualizar estadísticas del usuario ===
       final userRef =
           FirebaseFirestore.instance.collection('users').doc(myUid);
       await userRef.set({
@@ -123,7 +125,10 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Registrar degustación")),
+      appBar: AppBar(
+        title: const Text("Registrar degustación"),
+        leading: BackButton(onPressed: () => context.pop()), // 🔙 botón volver
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -153,6 +158,13 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
                 controller: _commentCtrl,
                 decoration: const InputDecoration(labelText: "Comentario"),
                 maxLines: 3,
+              ),
+              const SizedBox(height: 12),
+              CheckboxListTile(
+                title: const Text("Marcar como favorita ⭐"),
+                value: _isFavorite,
+                onChanged: (val) =>
+                    setState(() => _isFavorite = val ?? false),
               ),
               const SizedBox(height: 12),
               if (_imageFile != null)

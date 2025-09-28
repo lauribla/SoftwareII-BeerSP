@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:go_router/go_router.dart';
 
 class ActivityFeedScreen extends StatelessWidget {
   const ActivityFeedScreen({super.key});
@@ -14,7 +15,10 @@ class ActivityFeedScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Actividad completa")),
+      appBar: AppBar(
+        title: const Text("Actividad completa"),
+        leading: BackButton(onPressed: () => context.pop()), // 🔙 volver atrás
+      ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: _loadActivities(),
         builder: (context, snapshot) {
@@ -39,7 +43,6 @@ class ActivityFeedScreen extends StatelessWidget {
               final beerId = data['targetIds']?['beerId'];
 
               if (type == 'tasting' && beerId != null) {
-                // FutureBuilder para sacar datos de la cerveza
                 return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                   future: FirebaseFirestore.instance
                       .collection('beers')

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:go_router/go_router.dart';
 
 class GalardonesScreen extends StatelessWidget {
   const GalardonesScreen({super.key});
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> _loadAllBadges(String uid) {
+  Stream<QuerySnapshot<Map<String, dynamic>>> _loadBadges(String uid) {
     return FirebaseFirestore.instance
         .collection('users')
         .doc(uid)
@@ -25,37 +26,32 @@ class GalardonesScreen extends StatelessWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Mis galardones")),
+      appBar: AppBar(
+        title: const Text("Galardones"),
+        leading: BackButton(onPressed: () => context.pop()), // 🔙 volver atrás
+      ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: _loadAllBadges(uid),
+        stream: _loadBadges(uid),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(
-              child: Text("Todavía no tienes galardones"),
-            );
+            return const Center(child: Text("Todavía no tienes galardones"));
           }
 
-          final badges = snapshot.data!.docs;
+          final docs = snapshot.data!.docs;
 
-          return ListView.builder(
-            itemCount: badges.length,
-            itemBuilder: (context, index) {
-              final data = badges[index].data();
-              final level = data['level'] ?? 0;
-              final earnedAt = (data['earnedAt'] as Timestamp?)?.toDate();
-
-              return ListTile(
-                leading: const Icon(Icons.emoji_events, color: Colors.orange),
-                title: Text("Galardón: ${badges[index].id}"),
-                subtitle: Text(
-                  "Nivel: $level\nObtenido: ${earnedAt != null ? earnedAt.toLocal().toString().split(' ')[0] : '—'}",
+          return ListView(
+            children: [
+              for (final doc in docs)
+                ListTile(
+                  leading: const Icon(Icons.emoji_events, color: Colors.orange),
+                  title: Text("Galardón: ${doc.id}"),
+                  subtitle: Text("Nivel: ${doc['level']}"),
                 ),
-              );
-            },
+            ],
           );
         },
       ),
