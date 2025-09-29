@@ -81,8 +81,9 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
         'rating': double.tryParse(_ratingCtrl.text.trim()) ?? 0,
         'comment': _commentCtrl.text.trim(),
         'photoUrl': photoUrl,
-        'createdAt': FieldValue.serverTimestamp(),
         'isFavorite': _isFavorite, // ⭐ Aquí se guarda favorita o no
+        'createdAt': FieldValue.serverTimestamp(),
+        'createdAtLocal': DateTime.now().toIso8601String(), // ⭐ nuevo
       });
 
       // === 3. Añadir actividad en "activities" ===
@@ -151,7 +152,8 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
               ),
               TextFormField(
                 controller: _ratingCtrl,
-                decoration: const InputDecoration(labelText: "Valoración (0-5)"),
+                decoration:
+                    const InputDecoration(labelText: "Valoración (0-5)"),
                 keyboardType: TextInputType.number,
               ),
               TextFormField(
