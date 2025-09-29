@@ -11,6 +11,7 @@ import 'TopDegustaciones.dart';
 import 'Galardones.dart';
 import 'ActivityFeedScreen.dart';
 import 'PerfilAjustes.dart';
+import 'BeerDetailScreen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/auth',
@@ -71,6 +72,16 @@ final appRouter = GoRouter(
       path: '/badges',
       builder: (context, state) => const GalardonesScreen(),
     ),
+
+    // Detalle de cerveza
+GoRoute(
+  path: '/beer/:id',
+  builder: (context, state) {
+    final beerId = state.pathParameters['id']!;
+    return BeerDetailScreen(beerId: beerId);
+  },
+),
+
 
     // Actividad pública/amigos
     GoRoute(
