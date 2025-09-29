@@ -12,6 +12,8 @@ import 'Galardones.dart';
 import 'ActivityFeedScreen.dart';
 import 'PerfilAjustes.dart';
 import 'FriendsScreen.dart'; // 👈 nuevo import
+import 'BeerDetailScreen.dart';
+
 
 final appRouter = GoRouter(
   initialLocation: '/auth',
@@ -78,6 +80,12 @@ final appRouter = GoRouter(
       path: '/activities',
       builder: (context, state) => const ActivityFeedScreen(),
     ),
+    // Amigos
+GoRoute(
+  path: '/friends',
+  builder: (context, state) => const FriendsScreen(),
+),
+
 
     // 👥 Amigos
     GoRoute(

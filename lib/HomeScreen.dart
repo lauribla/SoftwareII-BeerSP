@@ -51,7 +51,7 @@ class HomeScreen extends StatelessWidget {
         .snapshots();
   }
 
-  /// 📡 Cargar favoritos (solo marcados ⭐)
+  /// 📡 Cargar favoritos (solo marcados ⭐, últimas 3)
   Stream<QuerySnapshot<Map<String, dynamic>>> _loadFavorites(String uid) {
     return FirebaseFirestore.instance
         .collection('tastings')
@@ -93,20 +93,26 @@ class HomeScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('BeerSp - Inicio'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.person),
-            tooltip: "Editar perfil",
-            onPressed: () => context.go('/profile'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => _signOut(context),
-            tooltip: 'Cerrar sesión',
-          ),
-        ],
-      ),
+  title: const Text('BeerSp - Inicio'),
+  actions: [
+    IconButton(
+      icon: const Icon(Icons.group),
+      tooltip: "Amigos",
+      onPressed: () => context.go('/friends'),
+    ),
+    IconButton(
+      icon: const Icon(Icons.person),
+      tooltip: "Editar perfil",
+      onPressed: () => context.go('/profile'),
+    ),
+    IconButton(
+      icon: const Icon(Icons.logout),
+      onPressed: () => _signOut(context),
+      tooltip: 'Cerrar sesión',
+    ),
+  ],
+),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -284,7 +290,7 @@ class HomeScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // ⭐ Panel de cervezas favoritas (top 3, solo las marcadas)
+            // ⭐ Panel de cervezas favoritas (últimas 3)
             if (uid != null)
               StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                 stream: _loadFavorites(uid),
@@ -315,7 +321,7 @@ class HomeScreen extends StatelessWidget {
                       children: [
                         const ListTile(
                           title: Text('Cervezas favoritas'),
-                          subtitle: Text('Top 3 por valoración'),
+                          subtitle: Text('Últimas 3 favoritas'),
                         ),
                         for (final doc in tastings)
                           FutureBuilder<
@@ -345,8 +351,7 @@ class HomeScreen extends StatelessWidget {
                               }
 
                               final beer = beerSnap.data!.data()!;
-                              final name =
-                                  beer['name'] ?? 'Desconocida';
+                              final name = beer['name'] ?? 'Desconocida';
                               final style = beer['style'] ?? '—';
                               final photoUrl = beer['photoUrl'] ?? '';
                               final rating = doc['rating'] ?? 0;
