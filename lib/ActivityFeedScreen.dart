@@ -1,109 +1,135 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 
 class ActivityFeedScreen extends StatelessWidget {
   const ActivityFeedScreen({super.key});
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> _loadActivities() {
+  Future<List<String>> _getFriendsAndMe() async {
+    final myUid = FirebaseAuth.instance.currentUser!.uid;
+
+    final snap = await FirebaseFirestore.instance
+        .collection('friendships')
+        .where('status', isEqualTo: 'accepted')
+        .where('senderUid', isEqualTo: myUid)
+        .get();
+
+    final snap2 = await FirebaseFirestore.instance
+        .collection('friendships')
+        .where('status', isEqualTo: 'accepted')
+        .where('receiverUid', isEqualTo: myUid)
+        .get();
+
+    final uids = <String>{myUid};
+    for (final doc in snap.docs) {
+      uids.add(doc['receiverUid']);
+    }
+    for (final doc in snap2.docs) {
+      uids.add(doc['senderUid']);
+    }
+
+    return uids.toList();
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> _loadActivities(
+      List<String> uids) {
     return FirebaseFirestore.instance
         .collection('activities')
+        .where('actorUid', whereIn: uids)
         .orderBy('createdAt', descending: true)
+        .limit(50)
         .snapshots();
+  }
+
+  Future<Map<String, dynamic>?> _loadUserData(String uid) async {
+    final doc =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    return doc.data();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Actividad completa"),
-        leading: BackButton(onPressed: () => context.go('/')), // 🔙 volver atrás
+        title: const Text("Actividad (tú + amigos)"),
+        leading: BackButton(onPressed: () => context.go('/')),
       ),
-      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: _loadActivities(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+      body: FutureBuilder<List<String>>(
+        future: _getFriendsAndMe(),
+        builder: (context, friendSnap) {
+          if (friendSnap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          if (!friendSnap.hasData || friendSnap.data!.isEmpty) {
             return const Center(
-              child: Text("Todavía no hay actividades"),
+              child: Text("Todavía no tienes amigos (solo verás tus actividades)"),
             );
           }
 
-          final activities = snapshot.data!.docs;
+          final uids = friendSnap.data!;
 
-          return ListView.builder(
-            itemCount: activities.length,
-            itemBuilder: (context, index) {
-              final data = activities[index].data();
-              final type = data['type'] ?? 'actividad';
-              final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
-              final beerId = data['targetIds']?['beerId'];
+          return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: _loadActivities(uids),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-              if (type == 'tasting' && beerId != null) {
-                return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                  future: FirebaseFirestore.instance
-                      .collection('beers')
-                      .doc(beerId)
-                      .get(),
-                  builder: (context, beerSnap) {
-                    if (beerSnap.connectionState == ConnectionState.waiting) {
-                      return const ListTile(
-                        leading: Icon(Icons.local_drink),
-                        title: Text("Cargando degustación..."),
-                      );
-                    }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const Center(child: Text("No hay actividades aún"));
+              }
 
-                    if (!beerSnap.hasData || !beerSnap.data!.exists) {
+              final activities = snapshot.data!.docs;
+
+              return ListView.builder(
+                itemCount: activities.length,
+                itemBuilder: (context, index) {
+                  final data = activities[index].data();
+                  final type = data['type'] ?? 'actividad';
+                  final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+                  final actorUid = data['actorUid'];
+
+                  String description;
+                  switch (type) {
+                    case 'tasting':
+                      description = "Degustación 🍺";
+                      break;
+                    case 'badgeEarned':
+                      description = "¡Galardón conseguido! 🏆";
+                      break;
+                    case 'friendAccepted':
+                      description = "Nueva amistad 🤝";
+                      break;
+                    default:
+                      description = type.toString();
+                  }
+
+                  return FutureBuilder<Map<String, dynamic>?>(
+                    future: _loadUserData(actorUid),
+                    builder: (context, userSnap) {
+                      final userData = userSnap.data ?? {};
+                      final actorName = userData['username'] ?? "Usuario";
+                      final actorPhotoUrl = userData['photoUrl'] ?? "";
+
                       return ListTile(
-                        leading: const Icon(Icons.error),
-                        title: const Text("Cerveza desconocida"),
+                        leading: CircleAvatar(
+                          backgroundImage: actorPhotoUrl.isNotEmpty
+                              ? NetworkImage(actorPhotoUrl)
+                              : null,
+                          child: actorPhotoUrl.isEmpty
+                              ? const Icon(Icons.person)
+                              : null,
+                        ),
+                        title: Text(actorName),
                         subtitle: Text(
-                          createdAt != null
-                              ? createdAt.toLocal().toString().split(' ')[0]
-                              : 'sin fecha',
+                          "$description\n${createdAt != null ? createdAt.toLocal().toString().split(' ')[0] : 'sin fecha'}",
                         ),
                       );
-                    }
-
-                    final beer = beerSnap.data!.data()!;
-                    final name = beer['name'] ?? 'Cerveza';
-                    final style = beer['style'] ?? '—';
-
-                    return ListTile(
-                      leading: const Icon(Icons.local_drink),
-                      title: Text("Degustación: $name"),
-                      subtitle: Text(
-                        "$style\n${createdAt != null ? createdAt.toLocal().toString().split(' ')[0] : 'sin fecha'}",
-                      ),
-                    );
-                  },
-                );
-              }
-
-              // Otros tipos de actividad
-              String description;
-              switch (type) {
-                case 'badgeEarned':
-                  description = "¡Galardón conseguido! 🏆";
-                  break;
-                case 'friendAccepted':
-                  description = "Nueva amistad aceptada 🤝";
-                  break;
-                default:
-                  description = type.toString();
-              }
-
-              return ListTile(
-                leading: const Icon(Icons.local_activity, color: Colors.blue),
-                title: Text(description),
-                subtitle: Text(
-                  createdAt != null
-                      ? createdAt.toLocal().toString().split(' ')[0]
-                      : 'sin fecha',
-                ),
+                    },
+                  );
+                },
               );
             },
           );

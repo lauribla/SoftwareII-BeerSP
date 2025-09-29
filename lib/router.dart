@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import 'HomeScreen.dart';
+import 'AuthGateScreen.dart';
 import 'AgeGateScreen.dart';
 import 'SignInScreen.dart';
 import 'SignUpScreen.dart';
@@ -10,7 +11,6 @@ import 'TopDegustaciones.dart';
 import 'Galardones.dart';
 import 'ActivityFeedScreen.dart';
 import 'PerfilAjustes.dart';
-
 
 final appRouter = GoRouter(
   initialLocation: '/auth',
@@ -21,9 +21,15 @@ final appRouter = GoRouter(
       builder: (context, state) => const HomeScreen(),
     ),
 
-    // AgeGate (verificación de edad)
+    // Pantalla inicial de autenticación (elige login o registro)
     GoRoute(
       path: '/auth',
+      builder: (context, state) => const AuthGateScreen(),
+    ),
+
+    // AgeGate → registro
+    GoRoute(
+      path: '/auth/agegate',
       builder: (context, state) => const AgeGateScreen(),
     ),
 
@@ -33,11 +39,11 @@ final appRouter = GoRouter(
       builder: (context, state) => const SignInScreen(),
     ),
 
-    // Sign Up con parámetro DOB
+    // Sign Up → necesita DOB
     GoRoute(
       path: '/auth/signup',
       builder: (context, state) {
-        final dob = state.extra as DateTime?;
+        final dob = state.extra as DateTime;
         return SignUpScreen(dob: dob);
       },
     ),
@@ -55,11 +61,10 @@ final appRouter = GoRouter(
     ),
 
     // Perfil / Ajustes
-GoRoute(
-  path: '/profile',
-  builder: (context, state) => const PerfilAjustesScreen(),
-),
-
+    GoRoute(
+      path: '/profile',
+      builder: (context, state) => const PerfilAjustesScreen(),
+    ),
 
     // Galardones
     GoRoute(
@@ -68,9 +73,9 @@ GoRoute(
     ),
 
     // Actividad pública/amigos
-GoRoute(
-  path: '/activities',
-  builder: (context, state) => const ActivityFeedScreen(),
-),
+    GoRoute(
+      path: '/activities',
+      builder: (context, state) => const ActivityFeedScreen(),
+    ),
   ],
 );

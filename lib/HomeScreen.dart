@@ -12,26 +12,56 @@ class HomeScreen extends StatelessWidget {
     return FirebaseFirestore.instance.collection('users').doc(uid).get();
   }
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> _loadActivities(String uid) {
+  /// 🔑 Obtener mis amigos confirmados + mi propio UID
+  Future<List<String>> _getFriendsAndMe() async {
+    final myUid = FirebaseAuth.instance.currentUser!.uid;
+
+    final snap = await FirebaseFirestore.instance
+        .collection('friendships')
+        .where('status', isEqualTo: 'accepted')
+        .where('senderUid', isEqualTo: myUid)
+        .get();
+
+    final snap2 = await FirebaseFirestore.instance
+        .collection('friendships')
+        .where('status', isEqualTo: 'accepted')
+        .where('receiverUid', isEqualTo: myUid)
+        .get();
+
+    final uids = <String>{myUid};
+
+    for (final doc in snap.docs) {
+      uids.add(doc['receiverUid']);
+    }
+    for (final doc in snap2.docs) {
+      uids.add(doc['senderUid']);
+    }
+
+    return uids.toList();
+  }
+
+  /// 📡 Cargar actividades de mí + mis amigos
+  Stream<QuerySnapshot<Map<String, dynamic>>> _loadActivities(List<String> uids) {
     return FirebaseFirestore.instance
         .collection('activities')
-        .where('actorUid', isEqualTo: uid)
+        .where('actorUid', whereIn: uids)
         .orderBy('createdAt', descending: true)
         .limit(5)
         .snapshots();
   }
 
-  /// 🔄 Cambiado: favoritas = isFavorite == true
+  /// 📡 Cargar favoritos (tuyos)
   Stream<QuerySnapshot<Map<String, dynamic>>> _loadFavorites(String uid) {
     return FirebaseFirestore.instance
         .collection('tastings')
         .where('userUid', isEqualTo: uid)
-        .where('isFavorite', isEqualTo: true)
-        .orderBy('createdAt', descending: true)
+        .where('rating', isGreaterThan: 0)
+        .orderBy('rating', descending: true)
         .limit(3)
         .snapshots();
   }
 
+  /// 📡 Cargar galardones (tuyos)
   Stream<QuerySnapshot<Map<String, dynamic>>> _loadBadges(String uid) {
     return FirebaseFirestore.instance
         .collection('users')
@@ -40,6 +70,13 @@ class HomeScreen extends StatelessWidget {
         .orderBy('earnedAt', descending: true)
         .limit(5)
         .snapshots();
+  }
+
+  /// 📡 Obtener datos de un usuario (username, photoUrl)
+  Future<Map<String, dynamic>?> _loadUserData(String uid) async {
+    final doc =
+        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    return doc.data();
   }
 
   Future<void> _signOut(BuildContext context) async {
@@ -97,41 +134,37 @@ class HomeScreen extends StatelessWidget {
                 }
 
                 final data = snapshot.data!.data()!;
-final username = data['username'] ?? 'Usuario';
-final photoUrl = data['photoUrl'] ?? '';
-final stats = data['stats'] ?? {};
-final tastings7d = stats['tastings7d'] ?? 0;
-final tastingsTotal = stats['tastingsTotal'] ?? 0; // 👈 nuevo
-final venues = stats['newVenues7d'] ?? 0;
-final badges = stats['badgesCount'] ?? 0;
+                final username = data['username'] ?? 'Usuario';
+                final photoUrl = data['photoUrl'] ?? '';
+                final stats = data['stats'] ?? {};
+                final tastings = stats['tastingsTotal'] ?? 0;
+                final venues = stats['venuesTotal'] ?? 0;
+                final badges = stats['badgesCount'] ?? 0;
 
-return Card(
-  child: ListTile(
-    leading: CircleAvatar(
-      backgroundImage:
-          photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
-      child: photoUrl.isEmpty ? const Icon(Icons.person) : null,
-    ),
-    title: Text(username),
-    subtitle: Text(
-      'Total: $tastingsTotal degustaciones '
-      '(últimos 7 días: $tastings7d), '
-      '$venues locales nuevos, $badges galardones',
-    ),
-  ),
-);
-
+                return Card(
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundImage:
+                          photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
+                      child: photoUrl.isEmpty ? const Icon(Icons.person) : null,
+                    ),
+                    title: Text(username),
+                    subtitle: Text(
+                      'Total: $tastings degustaciones, $venues locales, $badges galardones',
+                    ),
+                  ),
+                );
               },
             ),
 
             const SizedBox(height: 16),
 
-            // Panel de actividades de amigos (últimas 5)
+            // Panel de actividades (yo + amigos, últimas 5)
             if (uid != null)
-              StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                stream: _loadActivities(uid),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
+              FutureBuilder<List<String>>(
+                future: _getFriendsAndMe(),
+                builder: (context, friendSnap) {
+                  if (friendSnap.connectionState == ConnectionState.waiting) {
                     return const Card(
                       child: ListTile(
                         leading: CircularProgressIndicator(),
@@ -140,7 +173,7 @@ return Card(
                     );
                   }
 
-                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  if (!friendSnap.hasData || friendSnap.data!.isEmpty) {
                     return const Card(
                       child: ListTile(
                         leading: Icon(Icons.history),
@@ -149,45 +182,108 @@ return Card(
                     );
                   }
 
-                  final docs = snapshot.data!.docs;
+                  final uids = friendSnap.data!;
 
-                  return Card(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const ListTile(
-                          title: Text('Actividad de amigos'),
-                          subtitle: Text('Últimas 5 actividades'),
-                        ),
-                        for (final doc in docs)
-                          ListTile(
-                            leading: const Icon(Icons.local_drink),
-                            title: Text("Degustación"),
-                            subtitle: Text(
-                              (doc['createdAt'] as Timestamp?)
-                                      ?.toDate()
-                                      .toString() ??
-                                  'sin fecha',
+                  return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                    stream: _loadActivities(uids),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Card(
+                          child: ListTile(
+                            leading: CircularProgressIndicator(),
+                            title: Text('Cargando actividades...'),
+                          ),
+                        );
+                      }
+
+                      if (!snapshot.hasData ||
+                          snapshot.data!.docs.isEmpty) {
+                        return const Card(
+                          child: ListTile(
+                            leading: Icon(Icons.history),
+                            title: Text('No hay actividades aún'),
+                          ),
+                        );
+                      }
+
+                      final docs = snapshot.data!.docs;
+
+                      return Card(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const ListTile(
+                              title: Text('Actividad'),
+                              subtitle: Text('Tú y tus amigos'),
                             ),
-                          ),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () {
-                              context.go('/activities');
-                            },
-                            child: const Text('Ver todas'),
-                          ),
+                            for (final doc in docs)
+                              FutureBuilder<Map<String, dynamic>?>(
+                                future: _loadUserData(doc['actorUid']),
+                                builder: (context, userSnap) {
+                                  final userData = userSnap.data ?? {};
+                                  final actorName =
+                                      userData['username'] ?? "Usuario";
+                                  final actorPhotoUrl =
+                                      userData['photoUrl'] ?? "";
+
+                                  final createdAt =
+                                      (doc['createdAt'] as Timestamp?)
+                                          ?.toDate();
+                                  final type = doc['type'] ?? 'actividad';
+
+                                  String description;
+                                  switch (type) {
+                                    case 'tasting':
+                                      description = "Degustación 🍺";
+                                      break;
+                                    case 'badgeEarned':
+                                      description = "¡Galardón conseguido! 🏆";
+                                      break;
+                                    case 'friendAccepted':
+                                      description = "Nueva amistad 🤝";
+                                      break;
+                                    default:
+                                      description = type.toString();
+                                  }
+
+                                  return ListTile(
+                                    leading: CircleAvatar(
+                                      backgroundImage:
+                                          actorPhotoUrl.isNotEmpty
+                                              ? NetworkImage(actorPhotoUrl)
+                                              : null,
+                                      child: actorPhotoUrl.isEmpty
+                                          ? const Icon(Icons.person)
+                                          : null,
+                                    ),
+                                    title: Text(actorName),
+                                    subtitle: Text(
+                                      "$description\n${createdAt != null ? createdAt.toLocal().toString().split(' ')[0] : 'sin fecha'}",
+                                    ),
+                                  );
+                                },
+                              ),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: () {
+                                  context.go('/activities');
+                                },
+                                child: const Text('Ver todas'),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   );
                 },
               ),
 
             const SizedBox(height: 16),
 
-            // Panel de cervezas favoritas (solo marcadas con ⭐)
+            // ⚡ tus favoritas
             if (uid != null)
               StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                 stream: _loadFavorites(uid),
@@ -218,46 +314,13 @@ return Card(
                       children: [
                         const ListTile(
                           title: Text('Cervezas favoritas'),
-                          subtitle: Text('Top 3 que marcaste con ⭐'),
+                          subtitle: Text('Top 3 por valoración'),
                         ),
                         for (final doc in tastings)
-                          FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                            future: FirebaseFirestore.instance
-                                .collection('beers')
-                                .doc(doc['beerId'])
-                                .get(),
-                            builder: (context, beerSnap) {
-                              if (beerSnap.connectionState ==
-                                  ConnectionState.waiting) {
-                                return const ListTile(
-                                  leading: Icon(Icons.local_drink),
-                                  title: Text("Cargando cerveza..."),
-                                );
-                              }
-
-                              if (!beerSnap.hasData ||
-                                  !beerSnap.data!.exists) {
-                                return ListTile(
-                                  leading: const Icon(Icons.error),
-                                  title: Text("Cerveza desconocida"),
-                                  subtitle:
-                                      Text('Valoración: ${doc['rating']} ⭐'),
-                                );
-                              }
-
-                              final beer = beerSnap.data!.data()!;
-                              final name = beer['name'] ?? 'Desconocida';
-                              final style = beer['style'] ?? '—';
-                              final rating = doc['rating'] ?? 0;
-
-                              return ListTile(
-                                leading: const Icon(Icons.star,
-                                    color: Colors.amber),
-                                title: Text(name),
-                                subtitle: Text(style),
-                                trailing: Text('$rating ⭐'),
-                              );
-                            },
+                          ListTile(
+                            leading: const Icon(Icons.star, color: Colors.amber),
+                            title: Text('Cerveza ID: ${doc['beerId']}'),
+                            subtitle: Text('Valoración: ${doc['rating']} ⭐'),
                           ),
                         Align(
                           alignment: Alignment.centerRight,
@@ -276,7 +339,7 @@ return Card(
 
             const SizedBox(height: 16),
 
-            // Panel de galardones (últimos 5)
+            // ⚡ tus galardones
             if (uid != null)
               StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                 stream: _loadBadges(uid),

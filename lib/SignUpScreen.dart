@@ -4,9 +4,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 
 class SignUpScreen extends StatefulWidget {
-  final DateTime? dob; // la fecha de nacimiento viene desde AgeGateScreen
+  final DateTime dob; // viene desde AgeGateScreen (obligatorio aquí)
 
-  const SignUpScreen({super.key, this.dob});
+  const SignUpScreen({super.key, required this.dob});
 
   @override
   State<SignUpScreen> createState() => _SignUpScreenState();
@@ -38,22 +38,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
       final uid = cred.user!.uid;
 
-      // 2. Crear documento en Firestore
+      // 2. Guardar en Firestore
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
         'username': _usernameCtrl.text.trim(),
         'email': _emailCtrl.text.trim(),
-        'dob': widget.dob?.toIso8601String().split('T').first,
-        'isAdult': true,
+        'dob': widget.dob.toIso8601String().split('T').first, // fecha
+        'isAdult': true, // ya validado en AgeGate
         'displayName': _displayNameCtrl.text.trim(),
-        'surname': _surnameCtrl.text.isNotEmpty ? _surnameCtrl.text.trim() : null,
+        'surname':
+            _surnameCtrl.text.isNotEmpty ? _surnameCtrl.text.trim() : null,
         'location': _locationCtrl.text.trim(),
         'bio': _bioCtrl.text.trim(),
         'photoUrl': '',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
         'stats': {
+          'tastingsTotal': 0,
           'tastings7d': 0,
-          'newVenues7d': 0,
+          'venuesTotal': 0,
           'badgesCount': 0,
         },
       });
@@ -61,7 +63,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       // 3. Verificación de correo
       await cred.user!.sendEmailVerification();
 
-      // 4. Navegar al Home
+      // 4. Ir al Home
       if (mounted) context.go('/');
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -74,6 +76,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final dobText =
+        "${widget.dob.day}/${widget.dob.month}/${widget.dob.year}";
+
     return Scaffold(
       appBar: AppBar(title: const Text('Crear cuenta')),
       body: Padding(
@@ -82,6 +87,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
           key: _formKey,
           child: ListView(
             children: [
+              Text(
+                "Fecha de nacimiento: $dobText",
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+
               TextFormField(
                 controller: _emailCtrl,
                 decoration: const InputDecoration(labelText: 'Email'),
@@ -100,7 +111,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               TextFormField(
                 controller: _displayNameCtrl,
-                decoration: const InputDecoration(labelText: 'Nombre a mostrar'),
+                decoration:
+                    const InputDecoration(labelText: 'Nombre a mostrar'),
               ),
               TextFormField(
                 controller: _surnameCtrl,
