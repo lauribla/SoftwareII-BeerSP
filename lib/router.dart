@@ -11,7 +11,7 @@ import 'TopDegustaciones.dart';
 import 'Galardones.dart';
 import 'ActivityFeedScreen.dart';
 import 'PerfilAjustes.dart';
-import 'BeerDetailScreen.dart';
+import 'FriendsScreen.dart'; // 👈 nuevo import
 
 final appRouter = GoRouter(
   initialLocation: '/auth',
@@ -22,7 +22,7 @@ final appRouter = GoRouter(
       builder: (context, state) => const HomeScreen(),
     ),
 
-    // Pantalla inicial de autenticación (elige login o registro)
+    // Pantalla inicial de autenticación
     GoRoute(
       path: '/auth',
       builder: (context, state) => const AuthGateScreen(),
@@ -40,7 +40,7 @@ final appRouter = GoRouter(
       builder: (context, state) => const SignInScreen(),
     ),
 
-    // Sign Up → necesita DOB
+    // Sign Up → requiere DOB
     GoRoute(
       path: '/auth/signup',
       builder: (context, state) {
@@ -73,20 +73,16 @@ final appRouter = GoRouter(
       builder: (context, state) => const GalardonesScreen(),
     ),
 
-    // Detalle de cerveza
-GoRoute(
-  path: '/beer/:id',
-  builder: (context, state) {
-    final beerId = state.pathParameters['id']!;
-    return BeerDetailScreen(beerId: beerId);
-  },
-),
-
-
-    // Actividad pública/amigos
+    // Actividad
     GoRoute(
       path: '/activities',
       builder: (context, state) => const ActivityFeedScreen(),
+    ),
+
+    // 👥 Amigos
+    GoRoute(
+      path: '/friends',
+      builder: (context, state) => const FriendsScreen(),
     ),
   ],
 );

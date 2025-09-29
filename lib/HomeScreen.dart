@@ -41,7 +41,8 @@ class HomeScreen extends StatelessWidget {
   }
 
   /// 📡 Cargar actividades de mí + mis amigos
-  Stream<QuerySnapshot<Map<String, dynamic>>> _loadActivities(List<String> uids) {
+  Stream<QuerySnapshot<Map<String, dynamic>>> _loadActivities(
+      List<String> uids) {
     return FirebaseFirestore.instance
         .collection('activities')
         .where('actorUid', whereIn: uids)
@@ -50,18 +51,16 @@ class HomeScreen extends StatelessWidget {
         .snapshots();
   }
 
-  /// 📡 Cargar favoritos (tuyos, marcados con ⭐)
-Stream<QuerySnapshot<Map<String, dynamic>>> _loadFavorites(String uid) {
-  return FirebaseFirestore.instance
-      .collection('tastings')
-      .where('userUid', isEqualTo: uid)
-      .where('isFavorite', isEqualTo: true) // 👈 ahora solo favoritos
-      .orderBy('createdAt', descending: true)
-      .limit(3)
-      .snapshots();
-}
-
-
+  /// 📡 Cargar favoritos (solo marcados ⭐)
+  Stream<QuerySnapshot<Map<String, dynamic>>> _loadFavorites(String uid) {
+    return FirebaseFirestore.instance
+        .collection('tastings')
+        .where('userUid', isEqualTo: uid)
+        .where('isFavorite', isEqualTo: true)
+        .orderBy('createdAt', descending: true)
+        .limit(3)
+        .snapshots();
+  }
 
   /// 📡 Cargar galardones (tuyos)
   Stream<QuerySnapshot<Map<String, dynamic>>> _loadBadges(String uid) {
@@ -84,7 +83,7 @@ Stream<QuerySnapshot<Map<String, dynamic>>> _loadFavorites(String uid) {
   Future<void> _signOut(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
     if (context.mounted) {
-      context.go('/auth'); // vuelve al AgeGate
+      context.go('/auth'); // vuelve al login/registro
     }
   }
 
@@ -113,7 +112,7 @@ Stream<QuerySnapshot<Map<String, dynamic>>> _loadFavorites(String uid) {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Panel de perfil resumido
+            // 👤 Panel de perfil resumido
             FutureBuilder<DocumentSnapshot<Map<String, dynamic>>?>(
               future: _loadUser(),
               builder: (context, snapshot) {
@@ -161,7 +160,7 @@ Stream<QuerySnapshot<Map<String, dynamic>>> _loadFavorites(String uid) {
 
             const SizedBox(height: 16),
 
-            // Panel de actividades (yo + amigos, últimas 5)
+            // 📜 Panel de actividades (yo + amigos, últimas 5)
             if (uid != null)
               FutureBuilder<List<String>>(
                 future: _getFriendsAndMe(),
@@ -285,105 +284,106 @@ Stream<QuerySnapshot<Map<String, dynamic>>> _loadFavorites(String uid) {
 
             const SizedBox(height: 16),
 
-            // Panel de cervezas favoritas (top 3)
-if (uid != null)
-  StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-    stream: _loadFavorites(uid),
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return const Card(
-          child: ListTile(
-            leading: CircularProgressIndicator(),
-            title: Text('Cargando favoritas...'),
-          ),
-        );
-      }
-
-      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-        return const Card(
-          child: ListTile(
-            leading: Icon(Icons.star_border),
-            title: Text('Todavía no tienes cervezas favoritas'),
-          ),
-        );
-      }
-
-      final tastings = snapshot.data!.docs;
-
-      return Card(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const ListTile(
-              title: Text('Cervezas favoritas'),
-              subtitle: Text('Top 3 por valoración'),
-            ),
-            for (final doc in tastings)
-              FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                future: FirebaseFirestore.instance
-                    .collection('beers')
-                    .doc(doc['beerId'])
-                    .get(),
-                builder: (context, beerSnap) {
-                  if (beerSnap.connectionState == ConnectionState.waiting) {
-                    return const ListTile(
-                      leading: Icon(Icons.local_drink),
-                      title: Text("Cargando cerveza..."),
+            // ⭐ Panel de cervezas favoritas (top 3, solo las marcadas)
+            if (uid != null)
+              StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: _loadFavorites(uid),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Card(
+                      child: ListTile(
+                        leading: CircularProgressIndicator(),
+                        title: Text('Cargando favoritas...'),
+                      ),
                     );
                   }
 
-                  if (!beerSnap.hasData || !beerSnap.data!.exists) {
-                    return ListTile(
-  leading: photoUrl.isNotEmpty
-      ? CircleAvatar(backgroundImage: NetworkImage(photoUrl))
-      : const Icon(Icons.local_drink, color: Colors.brown),
-  title: Text(name),
-  subtitle: Text("Estilo: $style"),
-  trailing: Text("⭐ $rating"),
-  onTap: () => context.go('/beer/${doc.id}'), // 👉 navega al detalle
-);
-
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Card(
+                      child: ListTile(
+                        leading: Icon(Icons.star_border),
+                        title: Text('Todavía no tienes cervezas favoritas'),
+                      ),
+                    );
                   }
 
-                  final beer = beerSnap.data!.data()!;
-                  final name = beer['name'] ?? 'Desconocida';
-                  final style = beer['style'] ?? '—';
-                  final photoUrl = beer['photoUrl'] ?? '';
-                  final rating = doc['rating'] ?? 0;
+                  final tastings = snapshot.data!.docs;
 
-                  return ListTile(
-  leading: photoUrl.isNotEmpty
-      ? CircleAvatar(
-          backgroundImage: NetworkImage(photoUrl),
-        )
-      : const Icon(Icons.local_drink, color: Colors.brown),
-  title: Text(name),
-  subtitle: Text(style),
-  trailing: Text('$rating ⭐'),
-  onTap: () => context.go('/beer/${doc['beerId']}'), // 👉 navega al detalle
-);
+                  return Card(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const ListTile(
+                          title: Text('Cervezas favoritas'),
+                          subtitle: Text('Top 3 por valoración'),
+                        ),
+                        for (final doc in tastings)
+                          FutureBuilder<
+                              DocumentSnapshot<Map<String, dynamic>>>(
+                            future: FirebaseFirestore.instance
+                                .collection('beers')
+                                .doc(doc['beerId'])
+                                .get(),
+                            builder: (context, beerSnap) {
+                              if (beerSnap.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const ListTile(
+                                  leading: Icon(Icons.local_drink),
+                                  title: Text("Cargando cerveza..."),
+                                );
+                              }
 
+                              if (!beerSnap.hasData ||
+                                  !beerSnap.data!.exists) {
+                                return ListTile(
+                                  leading: const Icon(Icons.error),
+                                  title: Text(
+                                      "Cerveza desconocida (${doc['beerId']})"),
+                                  subtitle: Text(
+                                      'Valoración: ${doc['rating']} ⭐'),
+                                );
+                              }
+
+                              final beer = beerSnap.data!.data()!;
+                              final name =
+                                  beer['name'] ?? 'Desconocida';
+                              final style = beer['style'] ?? '—';
+                              final photoUrl = beer['photoUrl'] ?? '';
+                              final rating = doc['rating'] ?? 0;
+
+                              return ListTile(
+                                leading: photoUrl.isNotEmpty
+                                    ? CircleAvatar(
+                                        backgroundImage:
+                                            NetworkImage(photoUrl))
+                                    : const Icon(Icons.local_drink,
+                                        color: Colors.brown),
+                                title: Text(name),
+                                subtitle: Text(style),
+                                trailing: Text('$rating ⭐'),
+                                onTap: () =>
+                                    context.go('/beer/${doc['beerId']}'),
+                              );
+                            },
+                          ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () {
+                              context.go('/tastings/top');
+                            },
+                            child: const Text('Ver todas'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
                 },
               ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () {
-                  context.go('/tastings/top');
-                },
-                child: const Text('Ver todas'),
-              ),
-            ),
-          ],
-        ),
-      );
-    },
-  ),
-
 
             const SizedBox(height: 16),
 
-            // ⚡ tus galardones
+            // 🏆 Panel de galardones
             if (uid != null)
               StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                 stream: _loadBadges(uid),
