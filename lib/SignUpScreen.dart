@@ -89,7 +89,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       await FirebaseAuth.instance.signOut();
 
       // Redirigir al login o pantalla de inicio de sesión
-      context.go('/auth/singin');
+      context.go('/auth/signin');
     }
         } finally {
           setState(() => _loading = false);
