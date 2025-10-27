@@ -20,12 +20,36 @@ class _SignInScreenState extends State<SignInScreen> {
     setState(() => _loading = true);
 
     try {
+      // Intentar iniciar sesión
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: _emailCtrl.text.trim(),
         password: _passCtrl.text.trim(),
       );
 
-      if (mounted) context.go('/'); // al Home
+      final user = FirebaseAuth.instance.currentUser;
+
+      // Verificar si el correo está verificado
+      if (user != null && !user.emailVerified) {
+        //await user.sendEmailVerification();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Tu correo no está verificado. '
+              //'Te hemos reenviado el enlace de verificación.',
+            ),
+            duration: Duration(seconds: 5),
+          ),
+        );
+
+        // Cerrar sesión para evitar acceso sin verificación
+        await FirebaseAuth.instance.signOut();
+        setState(() => _loading = false);
+        return;
+      }
+
+      // Si está verificado, continuar al Home
+      if (mounted) context.go('/');
     } on FirebaseAuthException catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: ${e.message}')),
