@@ -70,19 +70,31 @@ class _SignUpScreenState extends State<SignUpScreen> {
         },
       });
 
-      // 3. Verificación de correo
-      await cred.user!.sendEmailVerification();
+      // 3. Enviar correo de verificación
+    await cred.user!.sendEmailVerification();
 
-      // 4. Ir al Home
-      if (mounted) context.go('/');
-    } on FirebaseAuthException catch (e) {
+    // 4. Mostrar aviso al usuario
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.message}')),
+        SnackBar(
+          content: Text(
+            'Te hemos enviado un correo de verificación a ${_emailCtrl.text.trim()}. '
+            'Por favor revisa tu bandeja de entrada antes de iniciar sesión.',
+          ),
+          duration: const Duration(seconds: 5),
+        ),
       );
-    } finally {
-      setState(() => _loading = false);
+
+      // Opcional: cerrar sesión temporalmente
+      await FirebaseAuth.instance.signOut();
+
+      // Redirigir al login o pantalla de inicio de sesión
+      context.go('/auth/singin');
     }
-  }
+        } finally {
+          setState(() => _loading = false);
+        }
+      }
 
   @override
   Widget build(BuildContext context) {
