@@ -20,8 +20,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _displayNameCtrl = TextEditingController();
   final _surnameCtrl = TextEditingController();
   final _locationCtrl = TextEditingController();
+  final _countryCtrl = TextEditingController();
   final _bioCtrl = TextEditingController();
 
+  String? _selectedGender;
   bool _loading = false;
 
   Future<void> _signUp() async {
@@ -40,18 +42,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
       // 2. Guardar en Firestore
       await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        'uid': uid,
         'username': _usernameCtrl.text.trim(),
         'email': _emailCtrl.text.trim(),
-        'dob': widget.dob.toIso8601String().split('T').first, // fecha
-        'isAdult': true, // ya validado en AgeGate
+        'dob': widget.dob.toIso8601String().split('T').first, // fecha nacimiento
+        'isAdult': true, // validado previamente en AgeGate
         'displayName': _displayNameCtrl.text.trim(),
         'surname':
             _surnameCtrl.text.isNotEmpty ? _surnameCtrl.text.trim() : null,
+        'gender': _selectedGender ?? '', // nuevo campo
+        'country': _countryCtrl.text.trim(), // nuevo campo
         'location': _locationCtrl.text.trim(),
         'bio': _bioCtrl.text.trim(),
         'photoUrl': '',
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
+        // Relaciones y listas iniciales
+        'friends': [],
+        'tastings': [],
+        'badges': [],
+        // Estadísticas resumen
         'stats': {
           'tastingsTotal': 0,
           'tastings7d': 0,
@@ -60,19 +70,31 @@ class _SignUpScreenState extends State<SignUpScreen> {
         },
       });
 
-      // 3. Verificación de correo
-      await cred.user!.sendEmailVerification();
+      // 3. Enviar correo de verificación
+    await cred.user!.sendEmailVerification();
 
-      // 4. Ir al Home
-      if (mounted) context.go('/');
-    } on FirebaseAuthException catch (e) {
+    // 4. Mostrar aviso al usuario
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.message}')),
+        SnackBar(
+          content: Text(
+            'Te hemos enviado un correo de verificación a ${_emailCtrl.text.trim()}. '
+            'Por favor revisa tu bandeja de entrada antes de iniciar sesión.',
+          ),
+          duration: const Duration(seconds: 5),
+        ),
       );
-    } finally {
-      setState(() => _loading = false);
+
+      // Opcional: cerrar sesión temporalmente
+      await FirebaseAuth.instance.signOut();
+
+      // Redirigir al login o pantalla de inicio de sesión
+      context.go('/auth/signin');
     }
-  }
+        } finally {
+          setState(() => _loading = false);
+        }
+      }
 
   @override
   Widget build(BuildContext context) {
@@ -93,6 +115,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 16),
 
+              // Email y contraseña
               TextFormField(
                 controller: _emailCtrl,
                 decoration: const InputDecoration(labelText: 'Email'),
@@ -118,15 +141,35 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 controller: _surnameCtrl,
                 decoration: const InputDecoration(labelText: 'Apellidos'),
               ),
+
+              // Nuevo: selector de género
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: _selectedGender,
+                decoration: const InputDecoration(labelText: 'Género'),
+                items: const [
+                  DropdownMenuItem(value: 'Femenino', child: Text('Femenino')),
+                  DropdownMenuItem(value: 'Masculino', child: Text('Masculino')),
+                  DropdownMenuItem(value: 'Otro', child: Text('Otro')),
+                  DropdownMenuItem(value: 'Prefiero no decirlo', child: Text('Prefiero no decirlo')),
+                ],
+                onChanged: (v) => setState(() => _selectedGender = v),
+              ),
+
+              TextFormField(
+                controller: _countryCtrl,
+                decoration: const InputDecoration(labelText: 'País'),
+              ),
               TextFormField(
                 controller: _locationCtrl,
-                decoration: const InputDecoration(labelText: 'Ubicación'),
+                decoration: const InputDecoration(labelText: 'Ubicación (ciudad)'),
               ),
               TextFormField(
                 controller: _bioCtrl,
-                decoration: const InputDecoration(labelText: 'Bio'),
+                decoration: const InputDecoration(labelText: 'Bio / Presentación'),
               ),
               const SizedBox(height: 20),
+
               ElevatedButton(
                 onPressed: _loading ? null : _signUp,
                 child: _loading

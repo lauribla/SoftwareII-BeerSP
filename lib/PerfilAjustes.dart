@@ -15,8 +15,16 @@ class PerfilAjustesScreen extends StatefulWidget {
 
 class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
   final _formKey = GlobalKey<FormState>();
+
+  // controladores
   final _usernameCtrl = TextEditingController();
+  final _displayNameCtrl = TextEditingController();
+  final _surnameCtrl = TextEditingController();
+  final _countryCtrl = TextEditingController();
+  final _locationCtrl = TextEditingController();
   final _bioCtrl = TextEditingController();
+  String? _selectedGender;
+
   File? _imageFile;
   bool _loading = false;
 
@@ -43,7 +51,13 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
     if (!doc.exists) return;
     final data = doc.data()!;
     _usernameCtrl.text = data['username'] ?? '';
+    _displayNameCtrl.text = data['displayName'] ?? '';
+    _surnameCtrl.text = data['surname'] ?? '';
+    _countryCtrl.text = data['country'] ?? '';
+    _locationCtrl.text = data['location'] ?? '';
     _bioCtrl.text = data['bio'] ?? '';
+    _selectedGender = data['gender'];
+    setState(() {});
   }
 
   Future<void> _saveProfile() async {
@@ -60,6 +74,11 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
       // 🔄 Actualizar en Firestore
       await FirebaseFirestore.instance.collection('users').doc(uid).update({
         'username': _usernameCtrl.text.trim(),
+        'displayName': _displayNameCtrl.text.trim(),
+        'surname': _surnameCtrl.text.trim(),
+        'gender': _selectedGender ?? '',
+        'country': _countryCtrl.text.trim(),
+        'location': _locationCtrl.text.trim(),
         'bio': _bioCtrl.text.trim(),
         if (photoUrl != null) 'photoUrl': photoUrl,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -73,7 +92,7 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Perfil actualizado")),
         );
-        context.pop(); // vuelve atrás al Home
+        context.pop(); // volver al Home
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -97,7 +116,7 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Perfil / Ajustes"),
-        leading: BackButton(onPressed: () => context.go('/')), // 🔙 volver atrás
+        leading: BackButton(onPressed: () => context.go('/')),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -105,6 +124,7 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
           key: _formKey,
           child: ListView(
             children: [
+              // 🖼 Imagen de perfil
               if (_imageFile != null)
                 CircleAvatar(
                   radius: 50,
@@ -134,7 +154,8 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
                 icon: const Icon(Icons.photo),
                 label: const Text("Cambiar foto"),
               ),
-              const SizedBox(height: 20),
+
+              // Campos de edición
               TextFormField(
                 controller: _usernameCtrl,
                 decoration:
@@ -142,12 +163,45 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
                 validator: (v) =>
                     v == null || v.isEmpty ? "Introduce un nombre" : null,
               ),
+              TextFormField(
+                controller: _displayNameCtrl,
+                decoration:
+                    const InputDecoration(labelText: "Nombre a mostrar"),
+              ),
+              TextFormField(
+                controller: _surnameCtrl,
+                decoration: const InputDecoration(labelText: "Apellidos"),
+              ),
+
               const SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                value: _selectedGender,
+                decoration: const InputDecoration(labelText: 'Género'),
+                items: const [
+                  DropdownMenuItem(value: 'Femenino', child: Text('Femenino')),
+                  DropdownMenuItem(value: 'Masculino', child: Text('Masculino')),
+                  DropdownMenuItem(value: 'Otro', child: Text('Otro')),
+                  DropdownMenuItem(
+                      value: 'Prefiero no decirlo',
+                      child: Text('Prefiero no decirlo')),
+                ],
+                onChanged: (v) => setState(() => _selectedGender = v),
+              ),
+              TextFormField(
+                controller: _countryCtrl,
+                decoration: const InputDecoration(labelText: "País"),
+              ),
+              TextFormField(
+                controller: _locationCtrl,
+                decoration:
+                    const InputDecoration(labelText: "Ubicación (ciudad)"),
+              ),
               TextFormField(
                 controller: _bioCtrl,
                 decoration: const InputDecoration(labelText: "Biografía"),
                 maxLines: 3,
               ),
+
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: _loading ? null : _saveProfile,
