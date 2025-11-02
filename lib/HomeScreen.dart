@@ -12,7 +12,7 @@ class HomeScreen extends StatelessWidget {
     return FirebaseFirestore.instance.collection('users').doc(uid).get();
   }
 
-  /// 🔑 Obtener mis amigos confirmados + mi propio UID
+  /// Obtener mis amigos confirmados + mi propio UID
   Future<List<String>> _getFriendsAndMe() async {
     final myUid = FirebaseAuth.instance.currentUser!.uid;
 
@@ -40,7 +40,7 @@ class HomeScreen extends StatelessWidget {
     return uids.toList();
   }
 
-  /// 📡 Cargar actividades de mí + mis amigos
+  /// Cargar actividades de mí + mis amigos
   Stream<QuerySnapshot<Map<String, dynamic>>> _loadActivities(
       List<String> uids) {
     return FirebaseFirestore.instance
@@ -51,7 +51,7 @@ class HomeScreen extends StatelessWidget {
         .snapshots();
   }
 
-  /// 📡 Cargar favoritos (solo marcados ⭐, últimas 3)
+  /// Cargar favoritos (solo marcados , últimas 3)
   Stream<QuerySnapshot<Map<String, dynamic>>> _loadFavorites(String uid) {
     return FirebaseFirestore.instance
         .collection('tastings')
@@ -62,7 +62,7 @@ class HomeScreen extends StatelessWidget {
         .snapshots();
   }
 
-  /// 📡 Cargar galardones (tuyos)
+  /// Cargar galardones (tuyos)
   Stream<QuerySnapshot<Map<String, dynamic>>> _loadBadges(String uid) {
     return FirebaseFirestore.instance
         .collection('users')
@@ -73,7 +73,7 @@ class HomeScreen extends StatelessWidget {
         .snapshots();
   }
 
-  /// 📡 Obtener datos de un usuario (username, photoUrl)
+  /// Obtener datos de un usuario (username, photoUrl)
   Future<Map<String, dynamic>?> _loadUserData(String uid) async {
     final doc =
         await FirebaseFirestore.instance.collection('users').doc(uid).get();
@@ -94,6 +94,7 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
   title: const Text('BeerSp - Inicio'),
+  centerTitle: true,
   actions: [
     IconButton(
       icon: const Icon(Icons.group),
@@ -110,6 +111,7 @@ class HomeScreen extends StatelessWidget {
       onPressed: () => _signOut(context),
       tooltip: 'Cerrar sesión',
     ),
+    SizedBox(width: 12),
   ],
 ),
 
@@ -166,7 +168,7 @@ class HomeScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // 📜 Panel de actividades (yo + amigos, últimas 5)
+            // Panel de actividades (yo + amigos, últimas 5)
             if (uid != null)
               FutureBuilder<List<String>>(
                 future: _getFriendsAndMe(),
@@ -290,7 +292,7 @@ class HomeScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // ⭐ Panel de cervezas favoritas (últimas 3)
+            // Panel de cervezas favoritas (últimas 3)
 if (uid != null)
   StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
     stream: FirebaseFirestore.instance
@@ -388,7 +390,7 @@ if (uid != null)
 
             const SizedBox(height: 16),
 
-            // 🏆 Panel de galardones
+            //Panel de galardones
             if (uid != null)
               StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                 stream: _loadBadges(uid),
@@ -446,7 +448,7 @@ if (uid != null)
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/tastings/new'),
+        onPressed: () => context.push('/tastings/new'),
         child: const Icon(Icons.add),
         tooltip: 'Registrar degustación',
       ),

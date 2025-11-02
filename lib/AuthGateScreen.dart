@@ -23,7 +23,7 @@ class AuthGateScreen extends StatelessWidget {
 
               // Botón de iniciar sesión
               ElevatedButton.icon(
-                onPressed: () => context.go('/auth/signin'),
+                onPressed: () => context.push('/auth/signin'),
                 icon: const Icon(Icons.login),
                 label: const Text("Iniciar sesión"),
                 style: ElevatedButton.styleFrom(
@@ -33,11 +33,11 @@ class AuthGateScreen extends StatelessWidget {
               const SizedBox(height: 16),
 
               // Botón de registrarse
-              OutlinedButton.icon(
-                onPressed: () => context.go('/auth/agegate'),
+              ElevatedButton.icon(
+                onPressed: () => context.push('/auth/agegate'),
                 icon: const Icon(Icons.person_add),
                 label: const Text("Registrarse"),
-                style: OutlinedButton.styleFrom(
+                style: ElevatedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 48),
                 ),
               ),
