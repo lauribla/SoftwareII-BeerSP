@@ -5,6 +5,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:typed_data'; // Flutter Web
+import 'package:flutter/foundation.dart' show kIsWeb; // Flutter Web
+import 'dart:convert';  // Flutter Web - ImgBB
+import 'package:http/http.dart' as http; // Flutter Web - ImgBB
 
 class CrearCervezaScreen extends StatefulWidget {
   const CrearCervezaScreen({super.key});
@@ -21,6 +25,7 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
   final _ratingCtrl = TextEditingController();
   final _commentCtrl = TextEditingController();
   File? _imageFile;
+  Uint8List? _webImage; // 🌐 Imagen para Flutter Web
   bool _loading = false;
   bool _isFavorite = false; // ⭐ Nuevo campo para favoritas
 
@@ -28,15 +33,60 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
     final picker = ImagePicker();
     final picked = await picker.pickImage(source: ImageSource.gallery);
     if (picked != null) {
-      setState(() => _imageFile = File(picked.path));
+      if (kIsWeb) {
+      // 🌐 Web - se leen los bytes de la imagen
+        final bytes = await picked.readAsBytes();
+        setState(() {
+          _webImage = bytes; // Nuevo campo (tipo Uint8List)
+          _imageFile = null; // Para que no se use File en la web
+        });
+      } else {
+        // 📱 Móvil o escritorio
+        setState(() {
+          _imageFile = File(picked.path);
+          _webImage = null;
+        });
+      }
     }
   }
 
   Future<String?> _uploadImage(String beerId) async {
-    if (_imageFile == null) return null;
-    final ref = FirebaseStorage.instance.ref().child("beers/$beerId.jpg");
-    await ref.putFile(_imageFile!);
-    return await ref.getDownloadURL();
+    if (_imageFile == null && _webImage == null) return null;
+    // 🌐 Web - subida a ImgBB
+    if (kIsWeb && _webImage != null) {
+      try {
+        const apiKey = "c25c03fcf2ff1d284b05c5e2478dc842"; // Clave de API - ImgBB
+        final url = Uri.parse('https://api.imgbb.com/1/upload?key=$apiKey');
+        // Convierte la imagen a base64
+        final base64Image = base64Encode(_webImage!);
+        // Petición POST a ImgBB
+        final response = await http.post(url, body: {
+          'image': base64Image,
+          'name': 'beer_$beerId',
+        });
+        if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final imageUrl = data['data']['url'];
+        return imageUrl; // URL pública
+        } else {
+          return null;
+        }
+      } catch (e) {
+        return null;
+      }
+    }
+    // 📱 Android / iOS - Firebase Storage
+    if (_imageFile != null) {
+      try {
+      final ref = FirebaseStorage.instance.ref().child("beers/$beerId.jpg");
+      await ref.putFile(_imageFile!);
+      final downloadUrl = await ref.getDownloadURL();
+      return downloadUrl;
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
   }
 
   Future<void> _saveTasting() async {
@@ -72,6 +122,11 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
 
       // Subir foto (opcional)
       final photoUrl = await _uploadImage(beerId);
+      if (photoUrl != null && photoUrl.isNotEmpty) {
+        await beersRef.doc(beerId).update({
+          'photoUrl': photoUrl,
+        });
+      }
 
       // === 2. Guardar degustación en "tastings" ===
       final tastingRef =
@@ -169,7 +224,9 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
                     setState(() => _isFavorite = val ?? false),
               ),
               const SizedBox(height: 12),
-              if (_imageFile != null)
+              if (kIsWeb && _webImage != null)
+                Image.memory(_webImage!, height: 150, fit: BoxFit.cover)
+              else if (!kIsWeb && _imageFile != null)
                 Image.file(_imageFile!, height: 150, fit: BoxFit.cover),
               TextButton.icon(
                 onPressed: _pickImage,
