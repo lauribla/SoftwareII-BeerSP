@@ -45,7 +45,7 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
   Future<void> _guardarCambios() async {
     if (!_formKey.currentState!.validate()) return;
 
-    await FirebaseFirestore.instance.collection('usuarios').doc(user?.uid).update({
+    await FirebaseFirestore.instance.collection('users').doc(user?.uid).update({
       'nombre': _nombreController.text.trim(),
       'ubicacion': _ubicacionController.text.trim(),
       'bio': _bioController.text.trim(),
