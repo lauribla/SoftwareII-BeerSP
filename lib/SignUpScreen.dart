@@ -16,12 +16,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
+  final _passConfCtrl = TextEditingController();
   final _usernameCtrl = TextEditingController();
   final _displayNameCtrl = TextEditingController();
   final _surnameCtrl = TextEditingController();
   final _locationCtrl = TextEditingController();
   final _countryCtrl = TextEditingController();
   final _bioCtrl = TextEditingController();
+
+  bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
 
   String? _selectedGender;
   bool _loading = false;
@@ -117,33 +121,34 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
               // Email y contraseña
               TextFormField(
-                controller: _emailCtrl,
-                decoration: const InputDecoration(labelText: 'Email'),
-                validator: (v) => v!.isEmpty ? 'Introduce un email' : null,
-              ),
-              TextFormField(
-                controller: _passCtrl,
-                decoration: const InputDecoration(labelText: 'Contraseña'),
-                obscureText: true,
-                validator: (v) => v!.length < 6 ? 'Mínimo 6 caracteres' : null,
-              ),
-              TextFormField(
                 controller: _usernameCtrl,
-                decoration: const InputDecoration(labelText: 'Username'),
-                validator: (v) => v!.isEmpty ? 'Introduce un username' : null,
+                decoration: const InputDecoration(labelText: 'Nombre de usuario'),
+                validator: (v) => v!.isEmpty ? 'Introduce un nombre de usuario' : null,
               ),
               TextFormField(
                 controller: _displayNameCtrl,
                 decoration:
-                    const InputDecoration(labelText: 'Nombre a mostrar'),
+                    const InputDecoration(labelText: 'Nombre (opcional)'),
               ),
               TextFormField(
                 controller: _surnameCtrl,
-                decoration: const InputDecoration(labelText: 'Apellidos'),
+                decoration: const InputDecoration(labelText: 'Apellidos (opcional)'),
               ),
-
-              // Nuevo: selector de género
-              const SizedBox(height: 12),
+              TextFormField(
+                controller: _emailCtrl,
+                decoration: const InputDecoration(labelText: 'Correo electrónico'),
+                validator: (value) {
+                  if (value!.isEmpty) {
+                    return 'Introduce tu correo electrónico';
+                  }
+                  if (!RegExp(
+                          r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+                      .hasMatch(value)) {
+                    return 'Introduce un correo electrónico válido';
+                  }
+                  return null;
+                },
+              ),
               DropdownButtonFormField<String>(
                 value: _selectedGender,
                 decoration: const InputDecoration(labelText: 'Género'),
@@ -155,20 +160,66 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ],
                 onChanged: (v) => setState(() => _selectedGender = v),
               ),
-
               TextFormField(
                 controller: _countryCtrl,
-                decoration: const InputDecoration(labelText: 'País'),
+                decoration: const InputDecoration(labelText: 'País (opcional)'),
               ),
               TextFormField(
                 controller: _locationCtrl,
-                decoration: const InputDecoration(labelText: 'Ubicación (ciudad)'),
+                decoration: const InputDecoration(labelText: 'Ciudad (opcional)'),
               ),
               TextFormField(
                 controller: _bioCtrl,
-                decoration: const InputDecoration(labelText: 'Bio / Presentación'),
+                decoration: const InputDecoration(labelText: 'Biografía (opcional)'),
+              ),
+              TextFormField(
+                controller: _passCtrl,
+                obscureText: !_isPasswordVisible,
+                decoration: InputDecoration(
+                  labelText: 'Contraseña',
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isPasswordVisible
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordVisible = !_isPasswordVisible; // Toggle visibility
+                      });
+                    },
+                  ),
+                ),
+                validator: (v) => v!.length < 6 ? 'Introduce una contraseña de mínimo 6 caracteres' : null,                   
+              ),
+              TextFormField(
+                controller: _passConfCtrl,
+                obscureText: !_isConfirmPasswordVisible,
+                decoration: InputDecoration(
+                  labelText: 'Confirma la contraseña',
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isConfirmPasswordVisible
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isConfirmPasswordVisible = !_isConfirmPasswordVisible; // Toggle visibility
+                      });
+                    },
+                  ),
+                ),
+                validator: (value) {
+                  if (value!.isEmpty) return 'Repite la contraseña';
+                  if (value != _passCtrl.text) {
+                    return 'Las contraseñas no coinciden';
+                  }
+                  return null;
+                },            
               ),
               const SizedBox(height: 20),
+
 
               ElevatedButton(
                 onPressed: _loading ? null : _signUp,
