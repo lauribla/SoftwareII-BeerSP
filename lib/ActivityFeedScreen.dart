@@ -73,7 +73,7 @@ class _ActivityFeedScreenState extends State<ActivityFeedScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const PerfilAjustes()),
+                MaterialPageRoute(builder: (context) => const PerfilAjustesScreen()),
               );
             },
           ),
@@ -97,7 +97,7 @@ class _ActivityFeedScreenState extends State<ActivityFeedScreen> {
               ),
             ),
             const SizedBox(height: 6),
-            const TopDegustaciones(),
+            const TopDegustacionesScreen(),
 
             const SizedBox(height: 20),
 
@@ -110,7 +110,7 @@ class _ActivityFeedScreenState extends State<ActivityFeedScreen> {
               ),
             ),
             const SizedBox(height: 6),
-            const Galardones(),
+            const GalardonesScreen(),
 
             const SizedBox(height: 20),
 
@@ -133,7 +133,7 @@ class _ActivityFeedScreenState extends State<ActivityFeedScreen> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const CrearCerveza()),
+            MaterialPageRoute(builder: (context) => const CrearCervezaScreen()),
           );
         },
         child: const Icon(Icons.add),

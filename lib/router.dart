@@ -95,8 +95,11 @@ final appRouter = GoRouter(
 
     // 🍻 Detalle de cerveza
     GoRoute(
-      path: '/beer/detail',
-      builder: (context, state) => const BeerDetailScreen(),
-    ),
+  path: '/beer/detail',
+  builder: (context, state) {
+    final beerId = state.extra as String;
+    return BeerDetailScreen(beerId: beerId);
+  },
+),
   ],
 );
