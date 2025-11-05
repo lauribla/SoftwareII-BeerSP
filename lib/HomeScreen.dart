@@ -3,6 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 import 'package:async/async.dart';
+import 'BeerDetailScreen.dart';
+
+
 
 
 class HomeScreen extends StatelessWidget {
@@ -223,6 +226,31 @@ class HomeScreen extends StatelessWidget {
     });
   }
 
+final List<Map<String, dynamic>> allCervezas = const [
+  {'nombre': 'IPA Golden', 'tipo': 'Cerveza'},
+  {'nombre': 'Stout Negra', 'tipo': 'Cerveza'},
+  {'nombre': 'Amber Ale', 'tipo': 'Cerveza'},
+];
+
+final List<Map<String, dynamic>> allLocales = const [
+  {'nombre': 'Bar Central', 'tipo': 'Local'},
+  {'nombre': 'CervezaLab', 'tipo': 'Local'},
+  {'nombre': 'La Fábrica', 'tipo': 'Local'},
+];
+
+
+/// Top degustaciones del usuario actual (3 mejores según rating)
+Stream<QuerySnapshot<Map<String, dynamic>>> _loadTopDegustaciones(String uid) {
+  return FirebaseFirestore.instance
+      .collection('tastings')
+      .where('userUid', isEqualTo: uid)
+      .orderBy('rating', descending: true)
+      .limit(3)
+      .snapshots();
+}
+
+
+
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -243,14 +271,9 @@ class HomeScreen extends StatelessWidget {
             onPressed: () => context.go('/friends'),
           ),
           IconButton(
-            icon: const Icon(Icons.person),
-            tooltip: "Editar perfil",
+            icon: const Icon(Icons.settings),
+            tooltip: "Ajustes",
             onPressed: () => context.go('/profile'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => _signOut(context),
-            tooltip: 'Cerrar sesión',
           ),
           const SizedBox(width: 12),
         ],
@@ -260,6 +283,83 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // 🔍 Barra de búsqueda de cervezas y locales
+StatefulBuilder(
+  builder: (context, setState) {
+     String searchQuery = '';
+    List<Map<String, dynamic>> results = [];
+
+
+    void search(String query) {
+      setState(() {
+        searchQuery = query;
+        final q = query.toLowerCase();
+        results = [
+          ...allCervezas.where((c) => c['nombre'].toLowerCase().contains(q)),
+          ...allLocales.where((l) => l['nombre'].toLowerCase().contains(q)),
+        ];
+      });
+    }
+
+    return Column(
+      children: [
+        TextField(
+          onChanged: search,
+          decoration: InputDecoration(
+            prefixIcon: const Icon(Icons.search),
+            hintText: 'Buscar cervezas o locales...',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 10),
+        if (searchQuery.isNotEmpty)
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 6,
+                ),
+              ],
+            ),
+            child: Column(
+              children: results.map((r) {
+                return ListTile(
+                  leading: Icon(
+                    r['tipo'] == 'Cerveza'
+                        ? Icons.sports_bar
+                        : Icons.location_on,
+                    color: Colors.amber[800],
+                  ),
+                  title: Text(r['nombre']),
+                  subtitle: Text(r['tipo']),
+                  onTap: () {
+  if (r['tipo'] == 'Cerveza') {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BeerDetailScreen(beerId: r['nombre']),
+      ),
+    );
+  }
+},
+
+                );
+              }).toList(),
+            ),
+          ),
+      ],
+    );
+  },
+),
+const SizedBox(height: 16),
+
             FutureBuilder<DocumentSnapshot<Map<String, dynamic>>?>(
               future: _loadUser(),
               builder: (context, snapshot) {
@@ -306,6 +406,94 @@ class HomeScreen extends StatelessWidget {
             ),
 
             const SizedBox(height: 16),
+
+        
+           // ⭐ Top degustaciones del usuario (desde Firestore)
+if (uid != null)
+  StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+    stream: _loadTopDegustaciones(uid),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.waiting) {
+        return const Card(
+          child: ListTile(
+            leading: CircularProgressIndicator(),
+            title: Text('Cargando top degustaciones...'),
+          ),
+        );
+      }
+
+      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+        return const Card(
+          child: ListTile(
+            leading: Icon(Icons.star_border),
+            title: Text('Todavía no tienes degustaciones registradas'),
+          ),
+        );
+      }
+
+      final docs = snapshot.data!.docs;
+
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '⭐ Top degustaciones',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            for (final doc in docs)
+              FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                future: FirebaseFirestore.instance
+                    .collection('beers')
+                    .doc(doc['beerId'])
+                    .get(),
+                builder: (context, beerSnap) {
+                  if (beerSnap.connectionState == ConnectionState.waiting) {
+                    return const ListTile(
+                      leading: Icon(Icons.local_drink),
+                      title: Text("Cargando cerveza..."),
+                    );
+                  }
+
+                  if (!beerSnap.hasData || !beerSnap.data!.exists) {
+                    return ListTile(
+                      leading: const Icon(Icons.error),
+                      title: Text(
+                          "Cerveza desconocida (${doc['beerId']})"),
+                      subtitle: Text(
+                          'Valoración: ${doc['rating'] ?? 0} ★'),
+                    );
+                  }
+
+                  final beer = beerSnap.data!.data()!;
+                  final name = beer['name'] ?? 'Desconocida';
+                  final style = beer['style'] ?? '—';
+                  final photoUrl = beer['photoUrl'] ?? '';
+                  final rating = doc['rating'] ?? 0;
+
+                  return Card(
+                    child: ListTile(
+                      leading: photoUrl.isNotEmpty
+                          ? CircleAvatar(
+                              backgroundImage: NetworkImage(photoUrl))
+                          : const Icon(Icons.local_drink,
+                              color: Colors.brown),
+                      title: Text(name),
+                      subtitle: Text(style),
+                      trailing: Text('$rating ★'),
+                    ),
+                  );
+                },
+              ),
+          ],
+        ),
+      );
+    },
+  ),
+const SizedBox(height: 16),
+
 
             // Panel de actividades (yo + amigos, últimas 5)
             if (uid != null)
