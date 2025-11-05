@@ -75,7 +75,7 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
   centerTitle: true,
   leading: IconButton(
     icon: const Icon(Icons.arrow_back),
-    onPressed: () => context.pop(), // 🔙 vuelve a la pantalla anterior
+    onPressed: () => context.go('/'), // 🔙 volver atrás
   ),
 ),
 
