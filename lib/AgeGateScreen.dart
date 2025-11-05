@@ -33,7 +33,7 @@ class _AgeGateScreenState extends State<AgeGateScreen> {
     }
 
     // Si es adulto → continuar al registro
-    context.go('/auth/signup', extra: _selectedDob);
+    context.push('/auth/signup', extra: _selectedDob);
   }
 
   Future<void> _pickDate() async {
@@ -62,41 +62,43 @@ class _AgeGateScreenState extends State<AgeGateScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text("Verificación de edad")),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              "Para continuar, necesitamos confirmar tu edad",
-              style: TextStyle(fontSize: 18),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 30),
-
-            // Mostrar DOB seleccionada
-            Text("Fecha de nacimiento: $dobText"),
-            const SizedBox(height: 10),
-
-            ElevatedButton(
-              onPressed: _pickDate,
-              child: const Text("Seleccionar fecha"),
-            ),
-            const SizedBox(height: 30),
-
-            if (_error != null)
-              Text(
-                _error!,
-                style: const TextStyle(color: Colors.red),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                "Para continuar, necesitamos confirmar tu edad",
+                style: TextStyle(fontSize: 18),
+                textAlign: TextAlign.center,
               ),
+              const SizedBox(height: 30),
 
-            const SizedBox(height: 20),
+              // Mostrar DOB seleccionada
+              Text("Fecha de nacimiento: $dobText"),
+              const SizedBox(height: 10),
 
-            ElevatedButton(
-              onPressed: _continue,
-              child: const Text("Continuar"),
-            ),
-          ],
+              ElevatedButton(
+                onPressed: _pickDate,
+                child: const Text("Seleccionar fecha"),
+              ),
+              const SizedBox(height: 30),
+
+              if (_error != null)
+                Text(
+                  _error!,
+                  style: const TextStyle(color: Colors.red),
+                ),
+
+              const SizedBox(height: 20),
+
+              ElevatedButton(
+                onPressed: _selectedDob == null ? null : _continue,
+                child: const Text("Continuar"),
+              ),
+            ],
+          ),
         ),
       ),
     );

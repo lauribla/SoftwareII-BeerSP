@@ -115,7 +115,7 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Perfil / Ajustes"),
+        title: const Text("Mi perfil"),
         leading: BackButton(onPressed: () => context.go('/')),
       ),
       body: Padding(
@@ -149,6 +149,7 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
                     );
                   },
                 ),
+              SizedBox(height: 8),
               TextButton.icon(
                 onPressed: _pickImage,
                 icon: const Icon(Icons.photo),

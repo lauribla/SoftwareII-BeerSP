@@ -73,7 +73,7 @@ class HomeScreen extends StatelessWidget {
         .snapshots();
   }
 
-  ///  Cargar galardones (tuyos)
+  /// Cargar galardones (tuyos)
   Stream<QuerySnapshot<Map<String, dynamic>>> _loadBadges(String uid) {
     return FirebaseFirestore.instance
         .collection('users')
@@ -583,7 +583,7 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/tastings/new'),
+        onPressed: () => context.push('/tastings/new'),
         child: const Icon(Icons.add),
         tooltip: 'Registrar degustación',
       ),

@@ -30,29 +30,18 @@ class _FriendsScreenState extends State<FriendsScreen>
     super.dispose();
   }
 
-  Future<void> _sendFriendRequest(String otherUid) async {
-    final myUid = FirebaseAuth.instance.currentUser!.uid;
-
-    await FirebaseFirestore.instance.collection('friendships').add({
-      'senderUid': myUid,
-      'receiverUid': otherUid,
-      'status': 'pending',
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Solicitud enviada")),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
   }
 
-  Future<void> _acceptRequest(String friendshipId) async {
-    await FirebaseFirestore.instance
-        .collection('friendships')
-        .doc(friendshipId)
-        .update({
-      'status': 'accepted',
-      'updatedAt': FieldValue.serverTimestamp(),
-    });
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _searchFriendsCtrl.dispose();
+    _searchUsersCtrl.dispose();
+    super.dispose();
   }
 
   @override
@@ -66,8 +55,8 @@ class _FriendsScreenState extends State<FriendsScreen>
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
-            Tab(text: "Mis Amigos"),
-            Tab(text: "Buscar Amigos"),
+            Tab(text: "Mis amigos"),
+            Tab(text: "Buscar amigos"),
           ],
         ),
       ),
@@ -338,6 +327,144 @@ class _AllUsersList extends StatelessWidget {
                   ),
                 );
               },
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+// Widget for listing friends
+class _FriendsList extends StatelessWidget {
+  final String myUid;
+  final String searchText;
+
+  const _FriendsList({required this.myUid, required this.searchText});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance
+          .collection('friendships')
+          .where('status', isEqualTo: 'accepted')
+          .where('senderUid', isEqualTo: myUid)
+          .snapshots(),
+      builder: (context, snapshot1) {
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('friendships')
+              .where('status', isEqualTo: 'accepted')
+              .where('receiverUid', isEqualTo: myUid)
+              .snapshots(),
+          builder: (context, snapshot2) {
+            if (!snapshot1.hasData && !snapshot2.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+
+            final friends = <String>{};
+            if (snapshot1.hasData) {
+              for (var doc in snapshot1.data!.docs) {
+                friends.add(doc['receiverUid']);
+              }
+            }
+            if (snapshot2.hasData) {
+              for (var doc in snapshot2.data!.docs) {
+                friends.add(doc['senderUid']);
+              }
+            }
+
+            if (friends.isEmpty) {
+              return const Text("No tienes amigos todavía");
+            }
+
+            return FutureBuilder<List<DocumentSnapshot<Map<String, dynamic>>>>(
+              future: Future.wait(friends.map((uid) =>
+                  FirebaseFirestore.instance.collection('users').doc(uid).get())),
+              builder: (context, userSnaps) {
+                if (!userSnaps.hasData) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final filtered = userSnaps.data!
+                    .where((snap) =>
+                        snap.exists &&
+                        (snap.data()?['username'] ?? '')
+                            .toLowerCase()
+                            .contains(searchText.toLowerCase()))
+                    .toList();
+                return ListView.builder(
+                  itemCount: filtered.length,
+                  itemBuilder: (context, idx) {
+                    final user = filtered[idx].data()!;
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage: user['photoUrl'] != null &&
+                                user['photoUrl'].isNotEmpty
+                            ? NetworkImage(user['photoUrl'])
+                            : null,
+                        child: (user['photoUrl'] == null ||
+                                user['photoUrl'].isEmpty)
+                            ? const Icon(Icons.person)
+                            : null,
+                      ),
+                      title: Text(user['username'] ?? 'Usuario'),
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+// Widget for listing all users
+class _AllUsersList extends StatelessWidget {
+  final String myUid;
+  final String searchText;
+
+  const _AllUsersList({required this.myUid, required this.searchText});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance.collection('users').snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        final filtered = snapshot.data!.docs
+            .where((doc) =>
+                doc.id != myUid &&
+                (doc.data()['username'] ?? '')
+                    .toLowerCase()
+                    .contains(searchText.toLowerCase()))
+            .toList();
+        return ListView.builder(
+          itemCount: filtered.length,
+          itemBuilder: (context, idx) {
+            final user = filtered[idx].data();
+            return ListTile(
+              leading: CircleAvatar(
+                backgroundImage: user['photoUrl'] != null &&
+                        user['photoUrl'].isNotEmpty
+                    ? NetworkImage(user['photoUrl'])
+                    : null,
+                child: (user['photoUrl'] == null ||
+                        user['photoUrl'].isEmpty)
+                    ? const Icon(Icons.person)
+                    : null,
+              ),
+              title: Text(user['username'] ?? 'Usuario'),
+              trailing: ElevatedButton(
+                child: const Icon(Icons.add),
+                onPressed: () {
+                  // Lógica para enviar solicitud de amistad
+                  // Puedes llamar a tu función _sendFriendRequest aquí si la pasas como callback
+                },
+              ),
             );
           },
         );
