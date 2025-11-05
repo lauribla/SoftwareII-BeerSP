@@ -6,34 +6,17 @@ import 'package:go_router/go_router.dart';
 class ActivityFeedScreen extends StatelessWidget {
   const ActivityFeedScreen({super.key});
 
+  /// Obtiene mi UID + UIDs de amigos desde users.friends
   Future<List<String>> _getFriendsAndMe() async {
     final myUid = FirebaseAuth.instance.currentUser!.uid;
-
-    final snap = await FirebaseFirestore.instance
-        .collection('friendships')
-        .where('status', isEqualTo: 'accepted')
-        .where('senderUid', isEqualTo: myUid)
-        .get();
-
-    final snap2 = await FirebaseFirestore.instance
-        .collection('friendships')
-        .where('status', isEqualTo: 'accepted')
-        .where('receiverUid', isEqualTo: myUid)
-        .get();
-
-    final uids = <String>{myUid};
-    for (final doc in snap.docs) {
-      uids.add(doc['receiverUid']);
-    }
-    for (final doc in snap2.docs) {
-      uids.add(doc['senderUid']);
-    }
-
-    return uids.toList();
+    final doc = await FirebaseFirestore.instance.collection('users').doc(myUid).get();
+    final friends = List<String>.from(doc.data()?['friends'] ?? []);
+    return [myUid, ...friends];
   }
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> _loadActivities(
-      List<String> uids) {
+  /// Carga las actividades de un listado de UIDs
+  Stream<QuerySnapshot<Map<String, dynamic>>> _loadActivities(List<String> uids) {
+    if (uids.isEmpty) return const Stream.empty();
     return FirebaseFirestore.instance
         .collection('activities')
         .where('actorUid', whereIn: uids)
@@ -42,9 +25,9 @@ class ActivityFeedScreen extends StatelessWidget {
         .snapshots();
   }
 
+  /// Carga los datos de un usuario
   Future<Map<String, dynamic>?> _loadUserData(String uid) async {
-    final doc =
-        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final doc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
     return doc.data();
   }
 
@@ -62,13 +45,13 @@ class ActivityFeedScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (!friendSnap.hasData || friendSnap.data!.isEmpty) {
+          final uids = friendSnap.data ?? [];
+
+          if (uids.isEmpty) {
             return const Center(
               child: Text("Todavía no tienes amigos (solo verás tus actividades)"),
             );
           }
-
-          final uids = friendSnap.data!;
 
           return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: _loadActivities(uids),

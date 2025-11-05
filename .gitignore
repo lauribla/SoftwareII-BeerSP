@@ -25,3 +25,4 @@ web/.dart_tool/
 
 # Others
 *.log
+.flutter-plugins-dependencies
