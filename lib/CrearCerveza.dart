@@ -183,7 +183,7 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Registrar degustación"),
-        leading: BackButton(onPressed: () => context.pop()), // 🔙 botón volver
+        leading: BackButton(onPressed: () => context.go('/')), // 🔙 volver atrás
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
