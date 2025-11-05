@@ -71,9 +71,14 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ajustes del perfil'),
-        centerTitle: true,
-      ),
+  title: const Text('Ajustes del perfil'),
+  centerTitle: true,
+  leading: IconButton(
+    icon: const Icon(Icons.arrow_back),
+    onPressed: () => context.pop(), // 🔙 vuelve a la pantalla anterior
+  ),
+),
+
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
