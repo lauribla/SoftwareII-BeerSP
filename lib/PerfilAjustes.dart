@@ -28,7 +28,7 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
 
   Future<void> _cargarDatosPerfil() async {
     final snapshot = await FirebaseFirestore.instance
-        .collection('usuarios')
+        .collection('users')
         .doc(user?.uid)
         .get();
 

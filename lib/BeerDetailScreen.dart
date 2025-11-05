@@ -72,7 +72,7 @@ class _BeerDetailScreenState extends State<BeerDetailScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Detalle de cerveza"),
-        leading: BackButton(onPressed: () => context.go('/')), // 🔙 volver atrás
+        leading: BackButton(onPressed: () => Navigator.pop(context)),
         actions: [
           StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
             stream: _favoriteStream(uid),
