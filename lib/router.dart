@@ -75,7 +75,7 @@ final appRouter = GoRouter(
       builder: (context, state) => const GalardonesScreen(),
     ),
 
-    // 📰 Actividad (feed principal)
+    // 📰 Actividad 
     GoRoute(
       path: '/activities',
       builder: (context, state) => const ActivityFeedScreen(),
