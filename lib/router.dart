@@ -11,38 +11,38 @@ import 'TopDegustaciones.dart';
 import 'Galardones.dart';
 import 'ActivityFeedScreen.dart';
 import 'PerfilAjustes.dart';
-import 'FriendsScreen.dart'; // 👈 nuevo import
+import 'FriendsScreen.dart';
 import 'BeerDetailScreen.dart';
-
+import 'NotificacionesScreen.dart'; // 👈 nuevo import
 
 final appRouter = GoRouter(
   initialLocation: '/auth',
   routes: [
-    // Home
+    // 🏠 Home principal
     GoRoute(
       path: '/',
       builder: (context, state) => const HomeScreen(),
     ),
 
-    // Pantalla inicial de autenticación
+    // 🔐 Autenticación principal
     GoRoute(
       path: '/auth',
       builder: (context, state) => const AuthGateScreen(),
     ),
 
-    // AgeGate → registro
+    // 👶 Verificación de edad
     GoRoute(
       path: '/auth/agegate',
       builder: (context, state) => const AgeGateScreen(),
     ),
 
-    // Sign In
+    // 🔑 Iniciar sesión
     GoRoute(
       path: '/auth/signin',
       builder: (context, state) => const SignInScreen(),
     ),
 
-    // Sign Up → requiere DOB
+    // 🆕 Registro (requiere fecha de nacimiento)
     GoRoute(
       path: '/auth/signup',
       builder: (context, state) {
@@ -51,46 +51,52 @@ final appRouter = GoRouter(
       },
     ),
 
-    // Nueva degustación
+    // 🍺 Nueva degustación
     GoRoute(
       path: '/tastings/new',
       builder: (context, state) => const CrearCervezaScreen(),
     ),
 
-    // Top degustaciones
+    // 🏆 Top degustaciones
     GoRoute(
       path: '/tastings/top',
       builder: (context, state) => const TopDegustacionesScreen(),
     ),
 
-    // Perfil / Ajustes
+    // 👤 Perfil / Ajustes
     GoRoute(
       path: '/profile',
       builder: (context, state) => const PerfilAjustesScreen(),
     ),
 
-    // Galardones
+    // 🎖️ Galardones
     GoRoute(
       path: '/badges',
       builder: (context, state) => const GalardonesScreen(),
     ),
 
-    // Actividad
+    // 📰 Actividad (feed principal)
     GoRoute(
       path: '/activities',
       builder: (context, state) => const ActivityFeedScreen(),
     ),
-    // Amigos
-GoRoute(
-  path: '/friends',
-  builder: (context, state) => const FriendsScreen(),
-),
-
 
     // 👥 Amigos
     GoRoute(
       path: '/friends',
       builder: (context, state) => const FriendsScreen(),
+    ),
+
+    // 🔔 Notificaciones
+    GoRoute(
+      path: '/notifications',
+      builder: (context, state) => const NotificacionesScreen(),
+    ),
+
+    // 🍻 Detalle de cerveza
+    GoRoute(
+      path: '/beer/detail',
+      builder: (context, state) => const BeerDetailScreen(),
     ),
   ],
 );
