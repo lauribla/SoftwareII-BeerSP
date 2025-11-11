@@ -4,9 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 import 'package:async/async.dart';
 import 'BeerDetailScreen.dart';
-
-
-
+import 'AvatarUsuario.dart'; // Nuevo import
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -21,8 +19,10 @@ class HomeScreen extends StatelessWidget {
   Future<List<String>> _getFriendsAndMe() async {
     final myUid = FirebaseAuth.instance.currentUser!.uid;
 
-    final userDoc =
-        await FirebaseFirestore.instance.collection('users').doc(myUid).get();
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(myUid)
+        .get();
 
     if (!userDoc.exists) return [myUid];
 
@@ -35,7 +35,8 @@ class HomeScreen extends StatelessWidget {
 
   /// Cargar actividades de mí + mis amigos
   Stream<QuerySnapshot<Map<String, dynamic>>> _loadActivities(
-      List<String> uids) {
+    List<String> uids,
+  ) {
     // Firestore whereIn tiene límite de 10, lo dividimos en trozos si hace falta
     if (uids.length <= 10) {
       return FirebaseFirestore.instance
@@ -89,8 +90,10 @@ class HomeScreen extends StatelessWidget {
 
   /// Obtener datos de un usuario (username, photoUrl)
   Future<Map<String, dynamic>?> _loadUserData(String uid) async {
-    final doc =
-        await FirebaseFirestore.instance.collection('users').doc(uid).get();
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .get();
     return doc.data();
   }
 
@@ -126,12 +129,14 @@ class HomeScreen extends StatelessWidget {
                 }
 
                 final data = snapshot.data!.data();
-                final requests =
-                    List<String>.from(data?['friendRequests'] ?? []);
+                final requests = List<String>.from(
+                  data?['friendRequests'] ?? [],
+                );
 
                 if (requests.isEmpty) {
                   return const Center(
-                      child: Text("No hay solicitudes pendientes"));
+                    child: Text("No hay solicitudes pendientes"),
+                  );
                 }
 
                 return ListView.builder(
@@ -139,7 +144,9 @@ class HomeScreen extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final requesterUid = requests[index];
 
-                    return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                    return FutureBuilder<
+                      DocumentSnapshot<Map<String, dynamic>>
+                    >(
                       future: FirebaseFirestore.instance
                           .collection('users')
                           .doc(requesterUid)
@@ -151,38 +158,45 @@ class HomeScreen extends StatelessWidget {
                         if (user == null) return const SizedBox.shrink();
 
                         return ListTile(
-                          leading: CircleAvatar(
-                            backgroundImage: (user['photoUrl'] ?? '').isNotEmpty
-                                ? NetworkImage(user['photoUrl'])
-                                : null,
-                            child: (user['photoUrl'] ?? '').isEmpty
-                                ? const Icon(Icons.person)
-                                : null,
+                          leading: AvatarUsuario(
+                            userId: requesterUid,
+                            radius: 22,
                           ),
                           title: Text(user['username'] ?? 'Usuario'),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                icon:
-                                    const Icon(Icons.check, color: Colors.green),
+                                icon: const Icon(
+                                  Icons.check,
+                                  color: Colors.green,
+                                ),
                                 onPressed: () async {
                                   await _acceptFriendRequest(
-                                      myUid, requesterUid);
+                                    myUid,
+                                    requesterUid,
+                                  );
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                        content: Text("Solicitud aceptada")),
+                                      content: Text("Solicitud aceptada"),
+                                    ),
                                   );
                                 },
                               ),
                               IconButton(
-                                icon: const Icon(Icons.close, color: Colors.red),
+                                icon: const Icon(
+                                  Icons.close,
+                                  color: Colors.red,
+                                ),
                                 onPressed: () async {
                                   await _rejectFriendRequest(
-                                      myUid, requesterUid);
+                                    myUid,
+                                    requesterUid,
+                                  );
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                        content: Text("Solicitud rechazada")),
+                                      content: Text("Solicitud rechazada"),
+                                    ),
                                   );
                                 },
                               ),
@@ -204,8 +218,9 @@ class HomeScreen extends StatelessWidget {
   /// Aceptar solicitud
   Future<void> _acceptFriendRequest(String myUid, String otherUid) async {
     final myRef = FirebaseFirestore.instance.collection('users').doc(myUid);
-    final otherRef =
-        FirebaseFirestore.instance.collection('users').doc(otherUid);
+    final otherRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(otherUid);
 
     await FirebaseFirestore.instance.runTransaction((tx) async {
       tx.update(myRef, {
@@ -226,30 +241,29 @@ class HomeScreen extends StatelessWidget {
     });
   }
 
-final List<Map<String, dynamic>> allCervezas = const [
-  {'nombre': 'IPA Golden', 'tipo': 'Cerveza'},
-  {'nombre': 'Stout Negra', 'tipo': 'Cerveza'},
-  {'nombre': 'Amber Ale', 'tipo': 'Cerveza'},
-];
+  final List<Map<String, dynamic>> allCervezas = const [
+    {'nombre': 'IPA Golden', 'tipo': 'Cerveza'},
+    {'nombre': 'Stout Negra', 'tipo': 'Cerveza'},
+    {'nombre': 'Amber Ale', 'tipo': 'Cerveza'},
+  ];
 
-final List<Map<String, dynamic>> allLocales = const [
-  {'nombre': 'Bar Central', 'tipo': 'Local'},
-  {'nombre': 'CervezaLab', 'tipo': 'Local'},
-  {'nombre': 'La Fábrica', 'tipo': 'Local'},
-];
+  final List<Map<String, dynamic>> allLocales = const [
+    {'nombre': 'Bar Central', 'tipo': 'Local'},
+    {'nombre': 'CervezaLab', 'tipo': 'Local'},
+    {'nombre': 'La Fábrica', 'tipo': 'Local'},
+  ];
 
-
-/// Top degustaciones del usuario actual (3 mejores según rating)
-Stream<QuerySnapshot<Map<String, dynamic>>> _loadTopDegustaciones(String uid) {
-  return FirebaseFirestore.instance
-      .collection('tastings')
-      .where('userUid', isEqualTo: uid)
-      .orderBy('rating', descending: true)
-      .limit(3)
-      .snapshots();
-}
-
-
+  /// Top degustaciones del usuario actual (3 mejores según rating)
+  Stream<QuerySnapshot<Map<String, dynamic>>> _loadTopDegustaciones(
+    String uid,
+  ) {
+    return FirebaseFirestore.instance
+        .collection('tastings')
+        .where('userUid', isEqualTo: uid)
+        .orderBy('rating', descending: true)
+        .limit(3)
+        .snapshots();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -284,10 +298,10 @@ Stream<QuerySnapshot<Map<String, dynamic>>> _loadTopDegustaciones(String uid) {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // 🔍 Barra de búsqueda de cervezas y locales
-const SearchBarWidget(),
-const SizedBox(height: 16),
-            // 📋 Resumen del perfil del usuario
+            const SearchBarWidget(),
+            const SizedBox(height: 16),
 
+            // 📋 Resumen del perfil del usuario
             FutureBuilder<DocumentSnapshot<Map<String, dynamic>>?>(
               future: _loadUser(),
               builder: (context, snapshot) {
@@ -319,11 +333,9 @@ const SizedBox(height: 16),
 
                 return Card(
                   child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundImage:
-                          photoUrl.isNotEmpty ? NetworkImage(photoUrl) : null,
-                      child: photoUrl.isEmpty ? const Icon(Icons.person) : null,
-                    ),
+                    leading: const AvatarUsuario(
+                      radius: 24,
+                    ), // ✅ lee en tiempo real desde Firestore
                     title: Text(username),
                     subtitle: Text(
                       'Total: $tastings degustaciones, $venues locales, $badges galardones',
@@ -335,93 +347,107 @@ const SizedBox(height: 16),
 
             const SizedBox(height: 16),
 
-        
-           // ⭐ Top degustaciones del usuario (desde Firestore)
-if (uid != null)
-  StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-    stream: _loadTopDegustaciones(uid),
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return const Card(
-          child: ListTile(
-            leading: CircularProgressIndicator(),
-            title: Text('Cargando top degustaciones...'),
-          ),
-        );
-      }
-
-      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-        return const Card(
-          child: ListTile(
-            leading: Icon(Icons.star_border),
-            title: Text('Todavía no tienes degustaciones registradas'),
-          ),
-        );
-      }
-
-      final docs = snapshot.data!.docs;
-
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '⭐ Top degustaciones',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            for (final doc in docs)
-              FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                future: FirebaseFirestore.instance
-                    .collection('beers')
-                    .doc(doc['beerId'])
-                    .get(),
-                builder: (context, beerSnap) {
-                  if (beerSnap.connectionState == ConnectionState.waiting) {
-                    return const ListTile(
-                      leading: Icon(Icons.local_drink),
-                      title: Text("Cargando cerveza..."),
+            // ⭐ Top degustaciones del usuario (desde Firestore)
+            if (uid != null)
+              StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: _loadTopDegustaciones(uid),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Card(
+                      child: ListTile(
+                        leading: CircularProgressIndicator(),
+                        title: Text('Cargando top degustaciones...'),
+                      ),
                     );
                   }
 
-                  if (!beerSnap.hasData || !beerSnap.data!.exists) {
-                    return ListTile(
-                      leading: const Icon(Icons.error),
-                      title: Text(
-                          "Cerveza desconocida (${doc['beerId']})"),
-                      subtitle: Text(
-                          'Valoración: ${doc['rating'] ?? 0} ★'),
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Card(
+                      child: ListTile(
+                        leading: Icon(Icons.star_border),
+                        title: Text(
+                          'Todavía no tienes degustaciones registradas',
+                        ),
+                      ),
                     );
                   }
 
-                  final beer = beerSnap.data!.data()!;
-                  final name = beer['name'] ?? 'Desconocida';
-                  final style = beer['style'] ?? '—';
-                  final photoUrl = beer['photoUrl'] ?? '';
-                  final rating = doc['rating'] ?? 0;
+                  final docs = snapshot.data!.docs;
 
-                  return Card(
-                    child: ListTile(
-                      leading: photoUrl.isNotEmpty
-                          ? CircleAvatar(
-                              backgroundImage: NetworkImage(photoUrl))
-                          : const Icon(Icons.local_drink,
-                              color: Colors.brown),
-                      title: Text(name),
-                      subtitle: Text(style),
-                      trailing: Text('$rating ★'),
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12.0,
+                      vertical: 8.0,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '⭐ Top degustaciones',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        for (final doc in docs)
+                          FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                            future: FirebaseFirestore.instance
+                                .collection('beers')
+                                .doc(doc['beerId'])
+                                .get(),
+                            builder: (context, beerSnap) {
+                              if (beerSnap.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const ListTile(
+                                  leading: Icon(Icons.local_drink),
+                                  title: Text("Cargando cerveza..."),
+                                );
+                              }
+
+                              if (!beerSnap.hasData || !beerSnap.data!.exists) {
+                                return ListTile(
+                                  leading: const Icon(Icons.error),
+                                  title: Text(
+                                    "Cerveza desconocida (${doc['beerId']})",
+                                  ),
+                                  subtitle: Text(
+                                    'Valoración: ${doc['rating'] ?? 0} ★',
+                                  ),
+                                );
+                              }
+
+                              final beer = beerSnap.data!.data()!;
+                              final name = beer['name'] ?? 'Desconocida';
+                              final style = beer['style'] ?? '—';
+                              final photoUrl = beer['photoUrl'] ?? '';
+                              final rating = doc['rating'] ?? 0;
+
+                              return Card(
+                                child: ListTile(
+                                  leading: photoUrl.isNotEmpty
+                                      ? CircleAvatar(
+                                          backgroundImage: NetworkImage(
+                                            photoUrl,
+                                          ),
+                                        )
+                                      : const Icon(
+                                          Icons.local_drink,
+                                          color: Colors.brown,
+                                        ),
+                                  title: Text(name),
+                                  subtitle: Text(style),
+                                  trailing: Text('$rating ★'),
+                                ),
+                              );
+                            },
+                          ),
+                      ],
                     ),
                   );
                 },
               ),
-          ],
-        ),
-      );
-    },
-  ),
-const SizedBox(height: 16),
-
+            const SizedBox(height: 16),
 
             // Panel de actividades (yo + amigos, últimas 5)
             if (uid != null)
@@ -451,8 +477,7 @@ const SizedBox(height: 16),
                   return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                     stream: _loadActivities(uids),
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState ==
-                          ConnectionState.waiting) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Card(
                           child: ListTile(
                             leading: CircularProgressIndicator(),
@@ -511,14 +536,9 @@ const SizedBox(height: 16),
                                   }
 
                                   return ListTile(
-                                    leading: CircleAvatar(
-                                      backgroundImage:
-                                          actorPhotoUrl.isNotEmpty
-                                              ? NetworkImage(actorPhotoUrl)
-                                              : null,
-                                      child: actorPhotoUrl.isEmpty
-                                          ? const Icon(Icons.person)
-                                          : null,
+                                    leading: AvatarUsuario(
+                                      userId: doc['actorUid'],
+                                      radius: 22,
                                     ),
                                     title: Text(actorName),
                                     subtitle: Text(
@@ -545,8 +565,6 @@ const SizedBox(height: 16),
               ),
 
             const SizedBox(height: 16),
-
-          
 
             // Panel de galardones
             if (uid != null)
@@ -583,8 +601,10 @@ const SizedBox(height: 16),
                         ),
                         for (final doc in badges)
                           ListTile(
-                            leading: const Icon(Icons.emoji_events,
-                                color: Colors.orange),
+                            leading: const Icon(
+                              Icons.emoji_events,
+                              color: Colors.orange,
+                            ),
                             title: Text('Galardón: ${doc.id}'),
                             subtitle: Text('Nivel: ${doc['level']}'),
                           ),
@@ -602,108 +622,122 @@ const SizedBox(height: 16),
                   );
                 },
               ),
-              const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-              // 📋 Mis degustaciones (robusto y simple)
-if (uid != null)
-  StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-    stream: FirebaseFirestore.instance
-        .collection('tastings')
-        .where('userUid', isEqualTo: uid)
-        .snapshots(), // sin orderBy → sin índices compuestos
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return const Card(
-          child: ListTile(
-            leading: CircularProgressIndicator(),
-            title: Text('Cargando degustaciones...'),
-          ),
-        );
-      }
-
-      if (snapshot.hasError) {
-        return Card(
-          child: ListTile(
-            leading: const Icon(Icons.error, color: Colors.red),
-            title: Text('Error al cargar degustaciones'),
-            subtitle: Text(snapshot.error.toString()),
-          ),
-        );
-      }
-
-      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-        return const Card(
-          child: ListTile(
-            leading: Icon(Icons.local_drink_outlined),
-            title: Text('Aún no has registrado degustaciones'),
-          ),
-        );
-      }
-
-      final degustaciones = snapshot.data!.docs;
-
-      return Card(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const ListTile(
-              title: Text('Mis degustaciones'),
-              subtitle: Text('Pulsa la estrella para marcar favoritas'),
-            ),
-            for (final d in degustaciones)
-              FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                future: FirebaseFirestore.instance
-                    .collection('beers')
-                    .doc(d['beerId'])
-                    .get(),
-                builder: (context, beerSnap) {
-                  if (beerSnap.connectionState == ConnectionState.waiting) {
-                    return const ListTile(
-                      leading: CircularProgressIndicator(),
-                      title: Text('Cargando cerveza...'),
+            // 📋 Mis degustaciones (robusto y simple)
+            if (uid != null)
+              StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: FirebaseFirestore.instance
+                    .collection('tastings')
+                    .where('userUid', isEqualTo: uid)
+                    .snapshots(), // sin orderBy → sin índices compuestos
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Card(
+                      child: ListTile(
+                        leading: CircularProgressIndicator(),
+                        title: Text('Cargando degustaciones...'),
+                      ),
                     );
                   }
 
-                  final beer = beerSnap.data?.data() ?? {};
-                  final beerName = beer['name'] ?? 'Cerveza desconocida';
-                  final style = beer['style'] ?? '—';
-                  final photoUrl = beer['photoUrl'] ?? '';
-                  final rating = d.data().containsKey('rating')
-                      ? d['rating']
-                      : 0;
-                  final isFav = d.data().containsKey('isFavorite')
-                      ? d['isFavorite']
-                      : false;
-
-                  return ListTile(
-                    leading: photoUrl.isNotEmpty
-                        ? CircleAvatar(backgroundImage: NetworkImage(photoUrl))
-                        : const Icon(Icons.local_drink, color: Colors.brown),
-                    title: Text(beerName),
-                    subtitle: Text('$style • $rating ★'),
-                    trailing: IconButton(
-                      icon: Icon(
-                        isFav ? Icons.star : Icons.star_border,
-                        color: isFav ? Colors.amber : Colors.grey,
+                  if (snapshot.hasError) {
+                    return Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.error, color: Colors.red),
+                        title: Text('Error al cargar degustaciones'),
+                        subtitle: Text(snapshot.error.toString()),
                       ),
-                      onPressed: () {
-                        FirebaseFirestore.instance
-                            .collection('tastings')
-                            .doc(d.id)
-                            .update({'isFavorite': !isFav});
-                      },
+                    );
+                  }
+
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return const Card(
+                      child: ListTile(
+                        leading: Icon(Icons.local_drink_outlined),
+                        title: Text('Aún no has registrado degustaciones'),
+                      ),
+                    );
+                  }
+
+                  final degustaciones = snapshot.data!.docs;
+
+                  return Card(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const ListTile(
+                          title: Text('Mis degustaciones'),
+                          subtitle: Text(
+                            'Pulsa la estrella para marcar favoritas',
+                          ),
+                        ),
+                        for (final d in degustaciones)
+                          FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                            future: FirebaseFirestore.instance
+                                .collection('beers')
+                                .doc(d['beerId'])
+                                .get(),
+                            builder: (context, beerSnap) {
+                              if (beerSnap.connectionState ==
+                                  ConnectionState.waiting) {
+                                return const ListTile(
+                                  leading: CircularProgressIndicator(),
+                                  title: Text('Cargando cerveza...'),
+                                );
+                              }
+
+                              final beer = beerSnap.data?.data() ?? {};
+                              final beerName =
+                                  beer['name'] ?? 'Cerveza desconocida';
+                              final style = beer['style'] ?? '—';
+                              final photoUrl = beer['photoUrl'] ?? '';
+                              final rating = d.data().containsKey('rating')
+                                  ? d['rating']
+                                  : 0;
+                              final isFav = d.data().containsKey('isFavorite')
+                                  ? d['isFavorite']
+                                  : false;
+
+                              return ListTile(
+                                leading: photoUrl.isNotEmpty
+                                    ? CircleAvatar(
+                                        backgroundImage: NetworkImage(photoUrl),
+                                      )
+                                    : const Icon(
+                                        Icons.local_drink,
+                                        color: Colors.brown,
+                                      ),
+                                title: Text(beerName),
+                                subtitle: Text('$style • $rating ★'),
+                                trailing: IconButton(
+                                  icon: Icon(
+                                    isFav ? Icons.star : Icons.star_border,
+                                    color: isFav ? Colors.amber : Colors.grey,
+                                  ),
+                                  onPressed: () {
+                                    FirebaseFirestore.instance
+                                        .collection('tastings')
+                                        .doc(d.id)
+                                        .update({'isFavorite': !isFav});
+                                  },
+                                ),
+                                onTap: () {
+                                  context.push(
+                                    '/tasting/detail',
+                                    extra: d['beerId'],
+                                  );
+                                },
+                              );
+                            },
+                          ),
+                      ],
                     ),
                   );
                 },
               ),
-          ],
-        ),
-      );
-    },
-  ),
 
-  const SizedBox(height: 16),
-
+            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -737,24 +771,20 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
 
     final q = query.toLowerCase();
 
-    final beersSnap = await FirebaseFirestore.instance.collection('beers').get();
-    final venuesSnap = await FirebaseFirestore.instance.collection('venues').get();
+    final beersSnap = await FirebaseFirestore.instance
+        .collection('beers')
+        .get();
+    final venuesSnap = await FirebaseFirestore.instance
+        .collection('venues')
+        .get();
 
     final filteredBeers = beersSnap.docs
         .where((d) => (d['name'] ?? '').toString().toLowerCase().contains(q))
-        .map((d) => {
-              'nombre': d['name'],
-              'tipo': 'Cerveza',
-              'beerId': d.id,
-            });
+        .map((d) => {'nombre': d['name'], 'tipo': 'Cerveza', 'beerId': d.id});
 
     final filteredVenues = venuesSnap.docs
         .where((d) => (d['name'] ?? '').toString().toLowerCase().contains(q))
-        .map((d) => {
-              'nombre': d['name'],
-              'tipo': 'Local',
-              'venueId': d.id,
-            });
+        .map((d) => {'nombre': d['name'], 'tipo': 'Local', 'venueId': d.id});
 
     setState(() {
       results = [...filteredBeers, ...filteredVenues];
@@ -770,9 +800,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.search),
             hintText: 'Buscar cervezas o locales...',
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             filled: true,
             fillColor: Colors.white,
           ),
@@ -784,10 +812,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 6,
-                ),
+                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6),
               ],
             ),
             child: Column(
@@ -806,8 +831,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) =>
-                              BeerDetailScreen(beerId: r['beerId']),
+                          builder: (_) => BeerDetailScreen(beerId: r['beerId']),
                         ),
                       );
                     }

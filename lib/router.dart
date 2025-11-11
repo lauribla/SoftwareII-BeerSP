@@ -14,21 +14,17 @@ import 'PerfilAjustes.dart';
 import 'FriendsScreen.dart';
 import 'BeerDetailScreen.dart';
 import 'NotificacionesScreen.dart'; // 👈 nuevo import
+import 'DegustacionesAmigosScreen.dart'; // 👈 nuevo import
+import 'TastingDetailScreen.dart'; // 👈 nuevo import
 
 final appRouter = GoRouter(
   initialLocation: '/auth',
   routes: [
     // 🏠 Home principal
-    GoRoute(
-      path: '/',
-      builder: (context, state) => const HomeScreen(),
-    ),
+    GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
 
     // 🔐 Autenticación principal
-    GoRoute(
-      path: '/auth',
-      builder: (context, state) => const AuthGateScreen(),
-    ),
+    GoRoute(path: '/auth', builder: (context, state) => const AuthGateScreen()),
 
     // 👶 Verificación de edad
     GoRoute(
@@ -75,7 +71,7 @@ final appRouter = GoRouter(
       builder: (context, state) => const GalardonesScreen(),
     ),
 
-    // 📰 Actividad 
+    // 📰 Actividad
     GoRoute(
       path: '/activities',
       builder: (context, state) => const ActivityFeedScreen(),
@@ -95,11 +91,26 @@ final appRouter = GoRouter(
 
     // 🍻 Detalle de cerveza
     GoRoute(
-  path: '/beer/detail',
-  builder: (context, state) {
-    final beerId = state.extra as String;
-    return BeerDetailScreen(beerId: beerId);
-  },
-),
+      path: '/beer/detail',
+      builder: (context, state) {
+        final beerId = state.extra as String;
+        return BeerDetailScreen(beerId: beerId);
+      },
+    ),
+
+    // 🍷 Degustaciones de amigos
+    GoRoute(
+      path: '/degustaciones_amigos',
+      builder: (context, state) => const DegustacionesAmigosScreen(),
+    ),
+
+    // 🍺 Detalle de degustación
+    GoRoute(
+      path: '/tasting/detail',
+      builder: (context, state) {
+        final beerId = state.extra as String;
+        return TastingDetailScreen(beerId: beerId);
+      },
+    ),
   ],
 );
