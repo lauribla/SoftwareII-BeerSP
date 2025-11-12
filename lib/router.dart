@@ -6,7 +6,9 @@ import 'AuthGateScreen.dart';
 import 'AgeGateScreen.dart';
 import 'SignInScreen.dart';
 import 'SignUpScreen.dart';
-import 'CrearCerveza.dart';
+import 'CrearDegustacionScreen.dart';
+import 'CrearCervezaScreen.dart';
+import 'CrearLocalScreen.dart';
 import 'TopDegustaciones.dart';
 import 'Galardones.dart';
 import 'ActivityFeedScreen.dart';
@@ -47,13 +49,22 @@ final appRouter = GoRouter(
       },
     ),
 
-    // 🍺 Nueva degustación
     GoRoute(
-      path: '/tastings/new',
-      builder: (context, state) => const CrearCervezaScreen(),
-    ),
+  path: '/tastings/new',
+  builder: (context, state) => const CrearDegustacionScreen(),
+),
 
-    // 🏆 Top degustaciones
+GoRoute(
+  path: '/cerveza/new',
+  builder: (context, state) => const CrearCervezaScreen(),
+),
+
+GoRoute(
+  path: '/local/new',
+  builder: (context, state) => const CrearLocalScreen(),
+),
+
+    //  Top degustaciones
     GoRoute(
       path: '/tastings/top',
       builder: (context, state) => const TopDegustacionesScreen(),

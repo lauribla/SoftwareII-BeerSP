@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:convert';
 import 'package:image_picker/image_picker.dart';
@@ -14,12 +17,21 @@ class PerfilAjustesScreen extends StatefulWidget {
 }
 
 class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
-  final user = FirebaseAuth.instance.currentUser;
   final _formKey = GlobalKey<FormState>();
+  final user = FirebaseAuth.instance.currentUser;
 
+  // Controladores
   final TextEditingController _nombreController = TextEditingController();
+  final TextEditingController _apellidoController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _ubicacionController = TextEditingController();
+  final TextEditingController _generoController = TextEditingController();
+  final TextEditingController _paisController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
+
+  DateTime? _fechaNacimiento;
+  File? _nuevaFoto;
+  String? _fotoUrl;
 
   bool _cargando = true;
 
@@ -30,33 +42,87 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
   }
 
   Future<void> _cargarDatosPerfil() async {
-    final snapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user?.uid)
-        .get();
+    final snapshot =
+        await FirebaseFirestore.instance.collection('users').doc(user?.uid).get();
 
     if (snapshot.exists) {
       final data = snapshot.data()!;
       _nombreController.text = data['nombre'] ?? '';
+      _apellidoController.text = data['apellido'] ?? '';
+      _emailController.text = data['email'] ?? user?.email ?? '';
       _ubicacionController.text = data['ubicacion'] ?? '';
+      _generoController.text = data['genero'] ?? '';
+      _paisController.text = data['pais'] ?? '';
       _bioController.text = data['bio'] ?? '';
+      _fotoUrl = data['photoUrl'];
+      if (data['fechaNacimiento'] != null) {
+        _fechaNacimiento = (data['fechaNacimiento'] as Timestamp).toDate();
+      }
     }
 
     setState(() => _cargando = false);
   }
 
+  Future<void> _seleccionarFoto() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+    if (picked != null) {
+      setState(() => _nuevaFoto = File(picked.path));
+    }
+  }
+
+  Future<String?> _subirFotoPerfil(String uid) async {
+    if (_nuevaFoto == null) return _fotoUrl;
+
+    final ref = FirebaseStorage.instance.ref().child('profile_photos/$uid.jpg');
+    await ref.putFile(_nuevaFoto!);
+    return await ref.getDownloadURL();
+  }
+
   Future<void> _guardarCambios() async {
     if (!_formKey.currentState!.validate()) return;
 
-    await FirebaseFirestore.instance.collection('users').doc(user?.uid).update({
+    final currentUser = FirebaseAuth.instance.currentUser;
+    String? nuevaFotoUrl = await _subirFotoPerfil(currentUser!.uid);
+
+    await FirebaseFirestore.instance.collection('users').doc(currentUser.uid).update({
       'nombre': _nombreController.text.trim(),
+      'apellido': _apellidoController.text.trim(),
+      'email': _emailController.text.trim(),
       'ubicacion': _ubicacionController.text.trim(),
+      'genero': _generoController.text.trim(),
+      'pais': _paisController.text.trim(),
       'bio': _bioController.text.trim(),
+      'fechaNacimiento': _fechaNacimiento != null
+          ? Timestamp.fromDate(_fechaNacimiento!)
+          : null,
+      'photoUrl': nuevaFotoUrl,
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Perfil actualizado correctamente')),
-    );
+    // ✅ Actualizar email de usuario en Firebase Auth (FirebaseAuth 6.1.2)
+    if (_emailController.text.trim() != currentUser.email) {
+      try {
+        await currentUser.verifyBeforeUpdateEmail(_emailController.text.trim());
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Correo actualizado, verifica tu nuevo email.'),
+          ),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al actualizar el correo: $e')),
+        );
+      }
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Perfil actualizado correctamente')),
+      );
+      Future.delayed(const Duration(milliseconds: 600), () {
+        context.pop();
+      });
+    }
   }
 
   Future<void> _cerrarSesion() async {
@@ -117,10 +183,9 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/'), // 🔙 volver atrás
+          onPressed: () => context.pop(),
         ),
       ),
-
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -128,7 +193,7 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 👤 FOTO DE PERFIL
+              // FOTO DE PERFIL
               Center(
                 child: FutureBuilder<DocumentSnapshot>(
                   future: FirebaseFirestore.instance
@@ -175,17 +240,36 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
                 "Editar perfil",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
 
               TextFormField(
                 controller: _nombreController,
                 decoration: const InputDecoration(
-                  labelText: "Nombre de usuario",
+                  labelText: "Nombre",
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) => value == null || value.isEmpty
-                    ? 'Introduce tu nombre'
-                    : null,
+                validator: (v) =>
+                    v == null || v.isEmpty ? 'Introduce tu nombre' : null,
+              ),
+              const SizedBox(height: 12),
+
+              TextFormField(
+                controller: _apellidoController,
+                decoration: const InputDecoration(
+                  labelText: "Apellidos",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              TextFormField(
+                controller: _emailController,
+                decoration: const InputDecoration(
+                  labelText: "Correo electrónico",
+                  border: OutlineInputBorder(),
+                ),
+                validator: (v) =>
+                    v == null || v.isEmpty ? 'Introduce tu correo' : null,
               ),
               const SizedBox(height: 12),
 
@@ -199,12 +283,60 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
               const SizedBox(height: 12),
 
               TextFormField(
+                controller: _generoController,
+                decoration: const InputDecoration(
+                  labelText: "Género",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              TextFormField(
+                controller: _paisController,
+                decoration: const InputDecoration(
+                  labelText: "País",
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              TextFormField(
                 controller: _bioController,
                 decoration: const InputDecoration(
-                  labelText: "Biografía / Descripción",
+                  labelText: "Presentación / Bio",
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
+              ),
+              const SizedBox(height: 12),
+
+              // 📅 Fecha de cumpleaños
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _fechaNacimiento != null
+                          ? 'Cumpleaños: ${_fechaNacimiento!.day}/${_fechaNacimiento!.month}/${_fechaNacimiento!.year}'
+                          : 'Selecciona tu fecha de cumpleaños',
+                    ),
+                  ),
+                  TextButton.icon(
+                    icon: const Icon(Icons.calendar_today),
+                    label: const Text('Elegir fecha'),
+                    onPressed: () async {
+                      final fecha = await showDatePicker(
+                        context: context,
+                        initialDate:
+                            _fechaNacimiento ?? DateTime(2000, 1, 1),
+                        firstDate: DateTime(1900),
+                        lastDate: DateTime.now(),
+                      );
+                      if (fecha != null) {
+                        setState(() => _fechaNacimiento = fecha);
+                      }
+                    },
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
 
@@ -220,7 +352,7 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
               const Divider(),
               const SizedBox(height: 10),
 
-              // 🔒 CERRAR SESIÓN
+              // CERRAR SESIÓN
               Center(
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
@@ -241,7 +373,6 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
             ],
           ),
         ),
