@@ -8,6 +8,7 @@ environment:
   sdk: ^3.9.2
 
 dependencies:
+  google_fonts: ^6.1.0
   flutter:
     sdk: flutter
 
@@ -40,6 +41,8 @@ dependencies:
 
   # Cargar imágenes con caché
   cached_network_image: ^3.3.0
+
+  async: ^2.10.0 
 
 dev_dependencies:
   flutter_test:
