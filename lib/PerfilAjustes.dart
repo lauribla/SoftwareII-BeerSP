@@ -5,6 +5,9 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:convert';
+import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 
 class PerfilAjustesScreen extends StatefulWidget {
   const PerfilAjustesScreen({Key? key}) : super(key: key);
@@ -127,12 +130,51 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
     if (mounted) context.go('/auth');
   }
 
+  Future<void> _actualizarFotoPerfil() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.gallery);
+    if (picked == null) return;
+
+    // 1️⃣ Leer la imagen seleccionada
+    final bytes = await picked.readAsBytes();
+    final base64Image = base64Encode(bytes);
+
+    // 2️⃣ Subir a ImgBB
+    const apiKey =
+        'c25c03fcf2ff1d284b05c5e2478dc842'; // ⚠️ Usa la misma que en CrearCerveza.dart
+    final response = await http.post(
+      Uri.parse('https://api.imgbb.com/1/upload?key=$apiKey'),
+      body: {'image': base64Image},
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final imageUrl = data['data']['url'];
+
+      // 3️⃣ Guardar en Firestore
+      final user = FirebaseAuth.instance.currentUser!;
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).update(
+        {'fotoPerfil': imageUrl},
+      );
+
+      // 4️⃣ Refrescar la interfaz
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Foto actualizada correctamente')),
+        );
+        setState(() {}); // Recarga la vista con la nueva imagen
+      }
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Error al subir la imagen')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_cargando) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -151,23 +193,52 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 📸 Foto de perfil
+              // FOTO DE PERFIL
               Center(
-                child: GestureDetector(
-                  onTap: _seleccionarFoto,
-                  child: CircleAvatar(
-                    radius: 50,
-                    backgroundImage: _nuevaFoto != null
-                        ? FileImage(_nuevaFoto!)
-                        : (_fotoUrl != null
-                            ? NetworkImage(_fotoUrl!) as ImageProvider
-                            : const AssetImage('assets/default_avatar.png')),
-                    child: const Align(
-                      alignment: Alignment.bottomRight,
-                      child: Icon(Icons.camera_alt, color: Colors.white),
-                    ),
-                  ),
+                child: FutureBuilder<DocumentSnapshot>(
+                  future: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(FirebaseAuth.instance.currentUser!.uid)
+                      .get(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const CircleAvatar(
+                        radius: 50,
+                        backgroundColor: Colors.grey,
+                        child: Icon(Icons.person, size: 50),
+                      );
+                    }
+
+                    final data = snapshot.data!.data() as Map<String, dynamic>?;
+                    final fotoPerfil = data?['fotoPerfil'] as String?;
+
+                    return Column(
+                      children: [
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundImage:
+                              (fotoPerfil != null && fotoPerfil.isNotEmpty)
+                              ? NetworkImage(fotoPerfil)
+                              : const AssetImage('assets/default_avatar.png')
+                                    as ImageProvider,
+                        ),
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          onPressed: _actualizarFotoPerfil,
+                          icon: const Icon(Icons.camera_alt),
+                          label: const Text('Cambiar foto de perfil'),
+                        ),
+                      ],
+                    );
+                  },
                 ),
+              ),
+              const SizedBox(height: 16),
+
+              // 🧾 CAMPOS DE TEXTO
+              const Text(
+                "Editar perfil",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
 
@@ -281,13 +352,15 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
               const Divider(),
               const SizedBox(height: 10),
 
-              // 🔒 Cerrar sesión
+              // CERRAR SESIÓN
               Center(
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.redAccent,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 30, vertical: 12),
+                      horizontal: 30,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
