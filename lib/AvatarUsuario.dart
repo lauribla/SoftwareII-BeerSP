@@ -6,8 +6,7 @@ class AvatarUsuario extends StatelessWidget {
   final String? userId;
   final double radius;
 
-  const AvatarUsuario({Key? key, this.userId, this.radius = 20})
-    : super(key: key);
+  const AvatarUsuario({super.key, this.userId, this.radius = 20});
 
   @override
   Widget build(BuildContext context) {

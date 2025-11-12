@@ -1,4 +1,3 @@
-import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import 'HomeScreen.dart';
@@ -15,9 +14,9 @@ import 'ActivityFeedScreen.dart';
 import 'PerfilAjustes.dart';
 import 'FriendsScreen.dart';
 import 'BeerDetailScreen.dart';
-import 'NotificacionesScreen.dart'; // 👈 nuevo import
-import 'DegustacionesAmigosScreen.dart'; // 👈 nuevo import
-import 'TastingDetailScreen.dart'; // 👈 nuevo import
+import 'NotificacionesScreen.dart';
+import 'DegustacionesAmigosScreen.dart';
+import 'TastingDetailScreen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/auth',
@@ -70,7 +69,7 @@ GoRoute(
       builder: (context, state) => const TopDegustacionesScreen(),
     ),
 
-    // 👤 Perfil / Ajustes
+    // 👤 Perfil y ajustes
     GoRoute(
       path: '/profile',
       builder: (context, state) => const PerfilAjustesScreen(),
@@ -100,27 +99,29 @@ GoRoute(
       builder: (context, state) => const NotificacionesScreen(),
     ),
 
-    // 🍻 Detalle de cerveza
+    // 🍺 Detalle de cerveza (ahora con tastingId)
     GoRoute(
       path: '/beer/detail',
       builder: (context, state) {
-        final beerId = state.extra as String;
-        return BeerDetailScreen(beerId: beerId);
+        final extra = state.extra as Map<String, dynamic>;
+        final beerId = extra['beerId'] as String;
+        final tastingId = extra['tastingId'] as String;
+        return BeerDetailScreen(beerId: beerId, tastingId: tastingId);
       },
     ),
 
-    // 🍷 Degustaciones de amigos
+    // 🍻 Degustaciones de amigos
     GoRoute(
       path: '/degustaciones_amigos',
       builder: (context, state) => const DegustacionesAmigosScreen(),
     ),
 
-    // 🍺 Detalle de degustación
+    // 🍷 Detalle de degustación
     GoRoute(
       path: '/tasting/detail',
       builder: (context, state) {
-        final beerId = state.extra as String;
-        return TastingDetailScreen(beerId: beerId);
+        final tastingId = state.extra as String;
+        return TastingDetailScreen(tastingId: tastingId);
       },
     ),
   ],

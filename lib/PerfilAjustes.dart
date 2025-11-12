@@ -10,7 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
 class PerfilAjustesScreen extends StatefulWidget {
-  const PerfilAjustesScreen({Key? key}) : super(key: key);
+  const PerfilAjustesScreen({super.key});
 
   @override
   State<PerfilAjustesScreen> createState() => _PerfilAjustesScreenState();
