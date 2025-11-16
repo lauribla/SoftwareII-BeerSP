@@ -34,7 +34,7 @@ class AvatarUsuario extends StatelessWidget {
           radius: radius,
           backgroundImage: (fotoPerfil != null && fotoPerfil.isNotEmpty)
               ? NetworkImage(fotoPerfil)
-              : const AssetImage('assets/default_avatar.png') as ImageProvider,
+              : const AssetImage('default_avatar.png') as ImageProvider,
         );
       },
     );

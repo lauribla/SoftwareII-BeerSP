@@ -99,7 +99,7 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
       'photoUrl': nuevaFotoUrl,
     });
 
-    // ✅ Actualizar email de usuario en Firebase Auth (FirebaseAuth 6.1.2)
+    // Actualizar email de usuario en Firebase Auth (FirebaseAuth 6.1.2)
     if (_emailController.text.trim() != currentUser.email) {
       try {
         await currentUser.verifyBeforeUpdateEmail(_emailController.text.trim());
@@ -120,7 +120,7 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
         const SnackBar(content: Text('Perfil actualizado correctamente')),
       );
       Future.delayed(const Duration(milliseconds: 600), () {
-        context.pop();
+        context.go('/');
       });
     }
   }
@@ -135,11 +135,11 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
     final picked = await picker.pickImage(source: ImageSource.gallery);
     if (picked == null) return;
 
-    // 1️⃣ Leer la imagen seleccionada
+    // Leer la imagen seleccionada
     final bytes = await picked.readAsBytes();
     final base64Image = base64Encode(bytes);
 
-    // 2️⃣ Subir a ImgBB
+    // Subir a ImgBB
     const apiKey =
         'c25c03fcf2ff1d284b05c5e2478dc842'; // ⚠️ Usa la misma que en CrearCerveza.dart
     final response = await http.post(
@@ -151,13 +151,13 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
       final data = jsonDecode(response.body);
       final imageUrl = data['data']['url'];
 
-      // 3️⃣ Guardar en Firestore
+      // Guardar en Firestore
       final user = FirebaseAuth.instance.currentUser!;
       await FirebaseFirestore.instance.collection('users').doc(user.uid).update(
         {'fotoPerfil': imageUrl},
       );
 
-      // 4️⃣ Refrescar la interfaz
+      // Refrescar la interfaz
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Foto actualizada correctamente')),
@@ -183,7 +183,7 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.pop(),
+          onPressed: () => context.go('/'),
         ),
       ),
       body: SingleChildScrollView(
@@ -219,7 +219,7 @@ class _PerfilAjustesScreenState extends State<PerfilAjustesScreen> {
                           backgroundImage:
                               (fotoPerfil != null && fotoPerfil.isNotEmpty)
                               ? NetworkImage(fotoPerfil)
-                              : const AssetImage('assets/default_avatar.png')
+                              : const AssetImage('default_avatar.png')
                                     as ImageProvider,
                         ),
                         const SizedBox(height: 12),

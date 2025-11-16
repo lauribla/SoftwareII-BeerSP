@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:go_router/go_router.dart';
+import 'package:country_picker/country_picker.dart';
 
 class CrearCervezaScreen extends StatefulWidget {
   const CrearCervezaScreen({super.key});
@@ -13,15 +13,46 @@ class CrearCervezaScreen extends StatefulWidget {
 class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
+  final _abvCtrl = TextEditingController();
+  final _ibuCtrl = TextEditingController();
+  final _countryController = TextEditingController(text: "🇪🇸 España");
+
+
   String style = 'IPA';
-  String country = 'España';
   String size = 'Pinta';
   String format = 'Botella';
   String color = 'Dorado claro';
-  final _abvCtrl = TextEditingController();
-  final _ibuCtrl = TextEditingController();
 
   bool _loading = false;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _abvCtrl.dispose();
+    _ibuCtrl.dispose();
+    _countryController.dispose();
+    super.dispose();
+  }
+
+  void _pickCountry() {
+    showCountryPicker(
+      context: context,
+      showPhoneCode: false,
+      onSelect: (Country country) {
+        _countryController.text = "${country.flagEmoji} ${country.name}";
+      },
+      countryListTheme: CountryListThemeData(
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+        ),
+        inputDecoration: InputDecoration(
+          labelText: 'Buscar país',
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+    );
+  }
 
   Future<void> _saveBeer() async {
     if (!_formKey.currentState!.validate()) return;
@@ -29,10 +60,12 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
     setState(() => _loading = true);
     try {
       final uid = FirebaseAuth.instance.currentUser!.uid;
+
+      // Guardamos en Firestore
       await FirebaseFirestore.instance.collection('beers').add({
         'name': _nameCtrl.text.trim(),
         'style': style,
-        'originCountry': country,
+        'originCountry': _countryController.text.trim(),
         'size': size,
         'format': format,
         'color': color,
@@ -46,7 +79,7 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Cerveza creada')),
         );
-        context.pop();
+        Navigator.pop(context);
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -55,6 +88,18 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
     } finally {
       setState(() => _loading = false);
     }
+  }
+
+  Widget _buildDropdown(String label, String value, List<String> options, void Function(String?) onChanged) {
+    return DropdownButtonFormField(
+      value: value,
+      items: options.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   @override
@@ -67,53 +112,86 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
           key: _formKey,
           child: ListView(
             children: [
-              TextFormField(controller: _nameCtrl, decoration: const InputDecoration(labelText: "Nombre")),
-              DropdownButtonFormField(
-                value: style,
-                items: ['Lager', 'IPA', 'APA', 'Stout', 'Saison', 'Porter', 'Pilsner', 'Weissbier', 'Sour Ale', 'Lambic', 'Amber Ale']
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                    .toList(),
-                onChanged: (v) => style = v!,
-                decoration: const InputDecoration(labelText: "Estilo"),
+              TextFormField(
+                controller: _nameCtrl,
+                decoration: InputDecoration(
+                  labelText: "Nombre",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                validator: (v) => v == null || v.isEmpty ? 'Introduce el nombre' : null,
               ),
-              DropdownButtonFormField(
-                value: country,
-                items: ['España', 'Alemania', 'Bélgica', 'USA', 'Reino Unido']
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                    .toList(),
-                onChanged: (v) => country = v!,
-                decoration: const InputDecoration(labelText: "País"),
-              ),
-              DropdownButtonFormField(
-                value: size,
-                items: ['Pinta', 'Media pinta', 'Tercio']
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                    .toList(),
-                onChanged: (v) => size = v!,
-                decoration: const InputDecoration(labelText: "Tamaño"),
-              ),
-              DropdownButtonFormField(
-                value: format,
-                items: ['Barril', 'Lata', 'Botella']
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                    .toList(),
-                onChanged: (v) => format = v!,
-                decoration: const InputDecoration(labelText: "Formato"),
-              ),
-              DropdownButtonFormField(
-                value: color,
-                items: ['Dorado claro','Ambar claro','Marrón oscuro','Negro opaco']
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                    .toList(),
-                onChanged: (v) => color = v!,
-                decoration: const InputDecoration(labelText: "Color"),
-              ),
-              TextFormField(controller: _abvCtrl, decoration: const InputDecoration(labelText: "Alcohol %"), keyboardType: TextInputType.number),
-              TextFormField(controller: _ibuCtrl, decoration: const InputDecoration(labelText: "IBU"), keyboardType: TextInputType.number),
               const SizedBox(height: 16),
+
+              _buildDropdown(
+                "Estilo",
+                style,
+                ['Lager', 'IPA', 'APA', 'Stout', 'Saison', 'Porter', 'Pilsner', 'Weissbier', 'Sour Ale', 'Lambic', 'Amber Ale'],
+                (v) => setState(() => style = v!),
+              ),
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _countryController,
+                readOnly: true,
+                onTap: _pickCountry,
+                decoration: InputDecoration(
+                  labelText: "País",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  suffixIcon: const Icon(Icons.arrow_drop_down),
+                ),
+                validator: (v) => v == null || v.isEmpty ? 'Selecciona un país' : null,
+              ),
+              const SizedBox(height: 16),
+
+              _buildDropdown(
+                "Tamaño",
+                size,
+                ['Pinta', 'Media pinta', 'Tercio'],
+                (v) => setState(() => size = v!),
+              ),
+              const SizedBox(height: 16),
+
+              _buildDropdown(
+                "Formato",
+                format,
+                ['Barril', 'Lata', 'Botella'],
+                (v) => setState(() => format = v!),
+              ),
+              const SizedBox(height: 16),
+
+              _buildDropdown(
+                "Color",
+                color,
+                ['Dorado claro', 'Ambar claro', 'Marrón oscuro', 'Negro opaco'],
+                (v) => setState(() => color = v!),
+              ),
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _abvCtrl,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: "Alcohol %",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              TextFormField(
+                controller: _ibuCtrl,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: "IBU",
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              const SizedBox(height: 24),
+
               ElevatedButton(
                 onPressed: _loading ? null : _saveBeer,
-                child: _loading ? const CircularProgressIndicator(color: Colors.white) : const Text("Guardar"),
+                child: _loading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : const Text("Guardar"),
               ),
             ],
           ),

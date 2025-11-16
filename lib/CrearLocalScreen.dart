@@ -60,22 +60,40 @@ class _CrearLocalScreenState extends State<CrearLocalScreen> {
           key: _formKey,
           child: ListView(
             children: [
-              TextFormField(
-                controller: _nameCtrl,
-                decoration: const InputDecoration(labelText: "Nombre del local"),
-                validator: (value) => value!.isEmpty ? 'Ingresa un nombre' : null,
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: TextFormField(
+                  controller: _nameCtrl,
+                  decoration: const InputDecoration(
+                      labelText: "Nombre del local",
+                      border: OutlineInputBorder()),
+                  validator: (value) =>
+                      value!.isEmpty ? 'Ingresa un nombre' : null,
+                ),
               ),
-              TextFormField(
-                controller: _addressCtrl,
-                decoration: const InputDecoration(labelText: "Dirección"),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: TextFormField(
+                  controller: _addressCtrl,
+                  decoration: const InputDecoration(
+                      labelText: "Dirección", border: OutlineInputBorder()),
+                ),
               ),
-              TextFormField(
-                controller: _cityCtrl,
-                decoration: const InputDecoration(labelText: "Ciudad"),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: TextFormField(
+                  controller: _cityCtrl,
+                  decoration: const InputDecoration(
+                      labelText: "Ciudad", border: OutlineInputBorder()),
+                ),
               ),
-              TextFormField(
-                controller: _countryCtrl,
-                decoration: const InputDecoration(labelText: "País"),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: TextFormField(
+                  controller: _countryCtrl,
+                  decoration: const InputDecoration(
+                      labelText: "País", border: OutlineInputBorder()),
+                ),
               ),
               const SizedBox(height: 16),
               ElevatedButton(

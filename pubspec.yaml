@@ -12,6 +12,7 @@ dependencies:
   flutter:
     sdk: flutter
 
+  country_picker: ^2.0.16
   # Iconos estilo iOS
   cupertino_icons: ^1.0.8
 
@@ -53,4 +54,4 @@ flutter:
   uses-material-design: true
 
 assets:
-  - assets/default_avatar.png
+  - default_avatar.png

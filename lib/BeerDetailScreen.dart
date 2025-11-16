@@ -151,7 +151,7 @@ class _BeerDetailScreenState extends State<BeerDetailScreen> {
                                 (c['fotoAutor'] != null &&
                                     (c['fotoAutor'] as String).isNotEmpty)
                                 ? NetworkImage(c['fotoAutor'])
-                                : const AssetImage('assets/default_avatar.png')
+                                : const AssetImage('default_avatar.png')
                                       as ImageProvider,
                           ),
                           const SizedBox(width: 12),
@@ -326,7 +326,7 @@ class _BeerDetailScreenState extends State<BeerDetailScreen> {
                     child: Image.network(
                       beer['photoUrl'],
                       height: 200,
-                      fit: BoxFit.cover,
+                      fit: BoxFit.contain,
                     ),
                   )
                 else

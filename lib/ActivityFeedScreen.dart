@@ -197,7 +197,7 @@ class ActivityFeedScreen extends StatelessWidget {
                                                 beerPhoto.isNotEmpty
                                                 ? NetworkImage(beerPhoto)
                                                 : const AssetImage(
-                                                        'assets/default_avatar.png',
+                                                        'default_avatar.png',
                                                       )
                                                       as ImageProvider,
                                           ),

@@ -359,9 +359,21 @@ class _CrearDegustacionScreenState extends State<CrearDegustacionScreen> {
               ),
               const SizedBox(height: 16),
               if (kIsWeb && _webImage != null)
-                Image.memory(_webImage!, height: 150, fit: BoxFit.cover)
-              else if (!kIsWeb && _imageFile != null)
-                Image.file(_imageFile!, height: 150, fit: BoxFit.cover),
+  SizedBox(
+    height: 200, // altura máxima
+    child: Image.memory(
+      _webImage!,
+      fit: BoxFit.contain,
+    ),
+  )
+else if (!kIsWeb && _imageFile != null)
+  SizedBox(
+    height: 200,
+    child: Image.file(
+      _imageFile!,
+      fit: BoxFit.contain,
+    ),
+  ),
               TextButton.icon(
                 onPressed: _pickImage,
                 icon: const Icon(Icons.photo),
