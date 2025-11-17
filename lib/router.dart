@@ -15,32 +15,32 @@ import 'ActivityFeedScreen.dart';
 import 'PerfilAjustes.dart';
 import 'FriendsScreen.dart';
 import 'BeerDetailScreen.dart';
-import 'NotificacionesScreen.dart'; // 👈 nuevo import
-import 'DegustacionesAmigosScreen.dart'; // 👈 nuevo import
-import 'TastingDetailScreen.dart'; // 👈 nuevo import
+import 'NotificacionesScreen.dart'; 
+import 'DegustacionesAmigosScreen.dart'; 
+import 'TastingDetailScreen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/auth',
   routes: [
-    // 🏠 Home principal
+    // Home principal
     GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
 
-    // 🔐 Autenticación principal
+    // Autenticación principal
     GoRoute(path: '/auth', builder: (context, state) => const AuthGateScreen()),
 
-    // 👶 Verificación de edad
+    // Verificación de edad
     GoRoute(
       path: '/auth/agegate',
       builder: (context, state) => const AgeGateScreen(),
     ),
 
-    // 🔑 Iniciar sesión
+    // Iniciar sesión
     GoRoute(
       path: '/auth/signin',
       builder: (context, state) => const SignInScreen(),
     ),
 
-    // 🆕 Registro (requiere fecha de nacimiento)
+    // Registro (requiere fecha de nacimiento)
     GoRoute(
       path: '/auth/signup',
       builder: (context, state) {
@@ -70,37 +70,37 @@ GoRoute(
       builder: (context, state) => const TopDegustacionesScreen(),
     ),
 
-    // 👤 Perfil / Ajustes
+    // Perfil / Ajustes
     GoRoute(
       path: '/profile',
       builder: (context, state) => const PerfilAjustesScreen(),
     ),
 
-    // 🎖️ Galardones
+    // Galardones
     GoRoute(
       path: '/badges',
       builder: (context, state) => const GalardonesScreen(),
     ),
 
-    // 📰 Actividad
+    // Actividad
     GoRoute(
       path: '/activities',
       builder: (context, state) => const ActivityFeedScreen(),
     ),
 
-    // 👥 Amigos
+    // Amigos
     GoRoute(
       path: '/friends',
       builder: (context, state) => const FriendsScreen(),
     ),
 
-    // 🔔 Notificaciones
+    // Notificaciones
     GoRoute(
       path: '/notifications',
       builder: (context, state) => const NotificacionesScreen(),
     ),
 
-    // 🍻 Detalle de cerveza
+    // Detalle de cerveza
     GoRoute(
       path: '/beer/detail',
       builder: (context, state) {
@@ -109,13 +109,13 @@ GoRoute(
       },
     ),
 
-    // 🍷 Degustaciones de amigos
+    // Degustaciones de amigos
     GoRoute(
       path: '/degustaciones_amigos',
       builder: (context, state) => const DegustacionesAmigosScreen(),
     ),
 
-    // 🍺 Detalle de degustación
+    // Detalle de degustación
     GoRoute(
       path: '/tasting/detail',
       builder: (context, state) {

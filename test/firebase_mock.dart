@@ -1,7 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_core_platform_interface/firebase_core_platform_interface.dart';
 
-/// Fake firebase app options para tests
 final _testOptions = FirebaseOptions(
   apiKey: 'test',
   appId: 'test',
@@ -9,7 +8,6 @@ final _testOptions = FirebaseOptions(
   projectId: 'test',
 );
 
-/// Fake FirebaseAppPlatform
 class FakeFirebaseApp extends FirebaseAppPlatform {
   FakeFirebaseApp() : super('testApp', _testOptions);
 
@@ -17,7 +15,6 @@ class FakeFirebaseApp extends FirebaseAppPlatform {
   Future<void> delete() async {}
 }
 
-/// Fake FirebasePlatform que evita inicialización real
 class FakeFirebasePlatform extends FirebasePlatform {
   FakeFirebasePlatform() : super();
 
