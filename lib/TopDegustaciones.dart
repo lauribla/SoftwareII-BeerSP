@@ -18,7 +18,7 @@ class TopDegustacionesScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Top degustaciones"),
-        leading: BackButton(onPressed: () => context.go('/')), // 🔙 volver atrás
+        leading: BackButton(onPressed: () => context.go('/')), 
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: _loadTopBeers(),

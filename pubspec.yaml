@@ -8,9 +8,11 @@ environment:
   sdk: ^3.9.2
 
 dependencies:
+  google_fonts: ^6.1.0
   flutter:
     sdk: flutter
 
+  country_picker: ^2.0.16
   # Iconos estilo iOS
   cupertino_icons: ^1.0.8
 
@@ -18,33 +20,43 @@ dependencies:
   image_picker: ^1.1.1
 
   # Firebase núcleo (obligatorio siempre)
-  firebase_core: ^3.6.0
+  firebase_core: ^4.1.1
 
   # Firebase Authentication (registro/login)
-  firebase_auth: ^5.3.0
+  firebase_auth: ^6.1.0
 
   # Cloud Firestore (perfiles, degustaciones, amigos, galardones…)
-  cloud_firestore: ^5.4.2
+  cloud_firestore: ^6.0.2
 
   # Firebase Storage (subir fotos de perfil, cervezas, etc.)
-  firebase_storage: ^12.2.0
+  firebase_storage: ^13.0.2
 
   # Navegación declarativa
-  go_router: ^14.0.0
+  go_router: ^17.0.0
 
   # Gestión de estado sencilla
   provider: ^6.0.0
 
   # Fechas/números internacionales
-  intl: ^0.19.0
+  intl: ^0.20.2
 
   # Cargar imágenes con caché
   cached_network_image: ^3.3.0
 
+  async: ^2.10.0 
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
+  # Necesario para mockear Firebase Core
+  firebase_core_platform_interface: ^6.0.2
+
+  # Para futuros tests más complejos (mockear auth, firestore, etc.)
+  mockito: ^5.4.4
 
 flutter:
   uses-material-design: true
+
+assets:
+  - default_avatar.png
