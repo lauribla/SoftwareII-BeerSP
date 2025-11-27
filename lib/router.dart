@@ -15,8 +15,8 @@ import 'ActivityFeedScreen.dart';
 import 'PerfilAjustes.dart';
 import 'FriendsScreen.dart';
 import 'BeerDetailScreen.dart';
-import 'NotificacionesScreen.dart'; 
-import 'DegustacionesAmigosScreen.dart'; 
+import 'NotificacionesScreen.dart';
+import 'DegustacionesAmigosScreen.dart';
 import 'TastingDetailScreen.dart';
 
 final appRouter = GoRouter(
@@ -70,7 +70,7 @@ GoRoute(
       builder: (context, state) => const TopDegustacionesScreen(),
     ),
 
-    // Perfil / Ajustes
+    // Perfil + Ajustes
     GoRoute(
       path: '/profile',
       builder: (context, state) => const PerfilAjustesScreen(),
@@ -100,12 +100,14 @@ GoRoute(
       builder: (context, state) => const NotificacionesScreen(),
     ),
 
-    // Detalle de cerveza
+    // Detalle de cerveza (con tastingId)
     GoRoute(
       path: '/beer/detail',
       builder: (context, state) {
-        final beerId = state.extra as String;
-        return BeerDetailScreen(beerId: beerId);
+        final extra = state.extra as Map<String, dynamic>;
+        final beerId = extra['beerId'] as String;
+        final tastingId = extra['tastingId'] as String;
+        return BeerDetailScreen(beerId: beerId, tastingId: tastingId);
       },
     ),
 
@@ -119,8 +121,8 @@ GoRoute(
     GoRoute(
       path: '/tasting/detail',
       builder: (context, state) {
-        final beerId = state.extra as String;
-        return TastingDetailScreen(beerId: beerId);
+        final tastingId = state.extra as String;
+        return TastingDetailScreen(tastingId: tastingId);
       },
     ),
   ],
