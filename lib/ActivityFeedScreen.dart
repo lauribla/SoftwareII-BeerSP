@@ -103,9 +103,10 @@ class ActivityFeedScreen extends StatelessWidget {
 
                         final tasting = tastingSnap.data!.data()!;
                         final beerId = tasting['beerId'] as String;
-                        final rating = (tasting['rating'] ?? 0).toStringAsFixed(
-                          1,
-                        );
+                        final ratingValue = tasting['rating'];
+                        final rating = ratingValue is num
+                            ? ratingValue.toStringAsFixed(1)
+                            : '0.0';
 
                         return FutureBuilder<
                           DocumentSnapshot<Map<String, dynamic>>
@@ -138,8 +139,15 @@ class ActivityFeedScreen extends StatelessWidget {
                               clipBehavior: Clip.hardEdge,
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(16),
-                                onTap: () =>
-                                    context.push('/beer/detail', extra: beerId),
+                                onTap: () {
+                                  context.push(
+                                    '/beer/detail',
+                                    extra: {
+                                      'beerId': beerId,
+                                      'tastingId': tastingId,
+                                    },
+                                  );
+                                },
                                 child: Padding(
                                   padding: const EdgeInsets.all(12.0),
                                   child: Column(
