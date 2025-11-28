@@ -1,9 +1,9 @@
-import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import 'HomeScreen.dart';
 import 'AuthGateScreen.dart';
 import 'AgeGateScreen.dart';
+import 'RecuperarContrasena.dart';
 import 'SignInScreen.dart';
 import 'SignUpScreen.dart';
 import 'CrearDegustacionScreen.dart';
@@ -50,19 +50,19 @@ final appRouter = GoRouter(
     ),
 
     GoRoute(
-  path: '/tastings/new',
-  builder: (context, state) => const CrearDegustacionScreen(),
-),
+      path: '/tastings/new',
+      builder: (context, state) => const CrearDegustacionScreen(),
+    ),
 
-GoRoute(
-  path: '/cerveza/new',
-  builder: (context, state) => const CrearCervezaScreen(),
-),
+    GoRoute(
+      path: '/cerveza/new',
+      builder: (context, state) => const CrearCervezaScreen(),
+    ),
 
-GoRoute(
-  path: '/local/new',
-  builder: (context, state) => const CrearLocalScreen(),
-),
+    GoRoute(
+      path: '/local/new',
+      builder: (context, state) => const CrearLocalScreen(),
+    ),
 
     //  Top degustaciones
     GoRoute(
@@ -122,6 +122,12 @@ GoRoute(
         final beerId = state.extra as String;
         return TastingDetailScreen(beerId: beerId);
       },
+    ),
+
+    // Recuperar contraseña
+    GoRoute(
+      path: '/auth/password_reset',
+      builder: (context, state) => RecuperarContrasena(),
     ),
   ],
 );

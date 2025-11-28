@@ -14,6 +14,7 @@ class _SignInScreenState extends State<SignInScreen> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _loading = false;
+  bool _isPasswordVisible = false;
 
   Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) return;
@@ -59,28 +60,6 @@ class _SignInScreenState extends State<SignInScreen> {
     }
   }
 
-  Future<void> _resetPassword() async {
-    if (_emailCtrl.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Introduce tu email primero')),
-      );
-      return;
-    }
-
-    try {
-      await FirebaseAuth.instance
-          .sendPasswordResetEmail(email: _emailCtrl.text.trim());
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Correo de recuperación enviado')),
-      );
-    } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.message}')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -96,10 +75,25 @@ class _SignInScreenState extends State<SignInScreen> {
                 decoration: const InputDecoration(labelText: 'Email'),
                 validator: (v) => v!.isEmpty ? 'Introduce un email' : null,
               ),
+              const SizedBox(height: 20),
               TextFormField(
                 controller: _passCtrl,
-                decoration: const InputDecoration(labelText: 'Contraseña'),
-                obscureText: true,
+                obscureText: !_isPasswordVisible,
+                decoration: InputDecoration(
+                  labelText: 'Contraseña',
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _isPasswordVisible
+                          ? Icons.visibility_off
+                          : Icons.visibility,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _isPasswordVisible = !_isPasswordVisible; // Toggle visibility
+                      });
+                    },
+                  ),
+                ),
                 validator: (v) => v!.isEmpty ? 'Introduce la contraseña' : null,
               ),
               const SizedBox(height: 20),
@@ -110,12 +104,12 @@ class _SignInScreenState extends State<SignInScreen> {
                     : const Text('Entrar'),
               ),
               TextButton(
-                onPressed: _resetPassword,
+                onPressed: () => context.push('/auth/password_reset'),
                 child: const Text('¿Olvidaste tu contraseña?'),
               ),
               const SizedBox(height: 20),
               TextButton(
-                onPressed: () => context.go('/auth/signup'),
+                onPressed: () => context.push('/auth/agegate'),
                 child: const Text('¿No tienes cuenta? Regístrate'),
               ),
             ],
