@@ -10,7 +10,8 @@ class FriendsScreen extends StatefulWidget {
   State<FriendsScreen> createState() => _FriendsScreenState();
 }
 
-class _FriendsScreenState extends State<FriendsScreen> with TickerProviderStateMixin {
+class _FriendsScreenState extends State<FriendsScreen>
+    with TickerProviderStateMixin {
   late TabController _tabController;
   final _searchFriendsCtrl = TextEditingController();
   final _searchUsersCtrl = TextEditingController();
@@ -29,24 +30,47 @@ class _FriendsScreenState extends State<FriendsScreen> with TickerProviderStateM
     super.dispose();
   }
 
+  // 🔹 Obtiene la foto de perfil del usuario (independientemente del campo usado)
+  ImageProvider getUserAvatar(Map<String, dynamic> user) {
+    final foto = (user['fotoPerfil'] ?? user['photoUrl'] ?? '')
+        .toString()
+        .trim();
+
+    if (foto.isNotEmpty) {
+      return NetworkImage(foto);
+    } else {
+      return const AssetImage('assets/default_avatar.png');
+    }
+  }
+
   Future<void> _sendFriendRequest(String otherUid) async {
     final myUid = FirebaseAuth.instance.currentUser!.uid;
     await FirebaseFirestore.instance.collection('users').doc(otherUid).update({
       'friendRequests': FieldValue.arrayUnion([myUid]),
     });
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Solicitud enviada")));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Solicitud enviada")));
   }
 
   Future<void> _removeFriend(String friendUid) async {
     final myUid = FirebaseAuth.instance.currentUser!.uid;
     final myRef = FirebaseFirestore.instance.collection('users').doc(myUid);
-    final friendRef = FirebaseFirestore.instance.collection('users').doc(friendUid);
+    final friendRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(friendUid);
 
     await FirebaseFirestore.instance.runTransaction((tx) async {
-      tx.update(myRef, {'friends': FieldValue.arrayRemove([friendUid])});
-      tx.update(friendRef, {'friends': FieldValue.arrayRemove([myUid])});
+      tx.update(myRef, {
+        'friends': FieldValue.arrayRemove([friendUid]),
+      });
+      tx.update(friendRef, {
+        'friends': FieldValue.arrayRemove([myUid]),
+      });
     });
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Amigo eliminado")));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Amigo eliminado")));
   }
 
   @override
@@ -68,7 +92,7 @@ class _FriendsScreenState extends State<FriendsScreen> with TickerProviderStateM
       body: TabBarView(
         controller: _tabController,
         children: [
-          // Tab 1: Mis amigos
+          // 🧩 TAB 1: MIS AMIGOS
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -84,23 +108,58 @@ class _FriendsScreenState extends State<FriendsScreen> with TickerProviderStateM
                 const SizedBox(height: 20),
                 Expanded(
                   child: StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                    stream: FirebaseFirestore.instance.collection('users').doc(myUid).snapshots(),
+                    stream: FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(myUid)
+                        .snapshots(),
                     builder: (context, snapshot) {
-                      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                      if (!snapshot.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
                       final myData = snapshot.data!.data();
-                      final friends = List<String>.from(myData?['friends'] ?? []);
+                      final friends = List<String>.from(
+                        myData?['friends'] ?? [],
+                      );
 
-                      if (friends.isEmpty) return const Text("No tienes amigos todavía");
+                      if (friends.isEmpty) {
+                        return const Text("No tienes amigos todavía");
+                      }
 
-                      return FutureBuilder<List<DocumentSnapshot<Map<String, dynamic>>>>(
-                        future: Future.wait(friends.map((uid) => FirebaseFirestore.instance.collection('users').doc(uid).get())),
+                      return FutureBuilder<
+                        List<DocumentSnapshot<Map<String, dynamic>>>
+                      >(
+                        future: Future.wait(
+                          friends.map(
+                            (uid) => FirebaseFirestore.instance
+                                .collection('users')
+                                .doc(uid)
+                                .get(),
+                          ),
+                        ),
                         builder: (context, friendSnaps) {
-                          if (!friendSnaps.hasData) return const Center(child: CircularProgressIndicator());
+                          if (!friendSnaps.hasData) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
+
                           final filtered = friendSnaps.data!
-                              .where((snap) => snap.exists &&
-                                  (snap.data()?['username'] ?? '').toLowerCase().contains(_searchFriendsCtrl.text.toLowerCase()))
+                              .where(
+                                (snap) =>
+                                    snap.exists &&
+                                    (snap.data()?['username'] ?? '')
+                                        .toLowerCase()
+                                        .contains(
+                                          _searchFriendsCtrl.text.toLowerCase(),
+                                        ),
+                              )
                               .toList();
-                          if (filtered.isEmpty) return const Text("No hay amigos que coincidan con la búsqueda");
+
+                          if (filtered.isEmpty) {
+                            return const Text(
+                              "No hay amigos que coincidan con la búsqueda",
+                            );
+                          }
 
                           return ListView.builder(
                             itemCount: filtered.length,
@@ -108,15 +167,17 @@ class _FriendsScreenState extends State<FriendsScreen> with TickerProviderStateM
                               final user = filtered[idx].data()!;
                               return ListTile(
                                 leading: CircleAvatar(
-                                  backgroundImage: user['photoUrl'] != null && user['photoUrl'].isNotEmpty
-                                      ? NetworkImage(user['photoUrl'])
-                                      : null,
-                                  child: user['photoUrl'] == null || user['photoUrl'].isEmpty ? const Icon(Icons.person) : null,
+                                  radius: 22,
+                                  backgroundImage: getUserAvatar(user),
                                 ),
                                 title: Text(user['username'] ?? 'Usuario'),
                                 trailing: IconButton(
-                                  icon: const Icon(Icons.close, color: Colors.red),
-                                  onPressed: () => _removeFriend(filtered[idx].id),
+                                  icon: const Icon(
+                                    Icons.close,
+                                    color: Colors.red,
+                                  ),
+                                  onPressed: () =>
+                                      _removeFriend(filtered[idx].id),
                                 ),
                               );
                             },
@@ -130,7 +191,7 @@ class _FriendsScreenState extends State<FriendsScreen> with TickerProviderStateM
             ),
           ),
 
-          // Tab 2: Buscar amigos
+          // 🧩 TAB 2: BUSCAR AMIGOS
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -146,23 +207,48 @@ class _FriendsScreenState extends State<FriendsScreen> with TickerProviderStateM
                 const SizedBox(height: 20),
                 Expanded(
                   child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                    stream: FirebaseFirestore.instance.collection('users').snapshots(),
+                    stream: FirebaseFirestore.instance
+                        .collection('users')
+                        .snapshots(),
                     builder: (context, snapshot) {
-                      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                      if (!snapshot.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
                       final users = snapshot.data!.docs
-                          .where((doc) =>
-                              doc.id != myUid &&
-                              (doc.data()['username'] ?? '').toLowerCase().contains(_searchUsersCtrl.text.toLowerCase()))
+                          .where(
+                            (doc) =>
+                                doc.id != myUid &&
+                                (doc.data()['username'] ?? '')
+                                    .toLowerCase()
+                                    .contains(
+                                      _searchUsersCtrl.text.toLowerCase(),
+                                    ),
+                          )
                           .toList();
-                      if (users.isEmpty) return const Text("No hay usuarios disponibles");
+                      if (users.isEmpty) {
+                        return const Text("No hay usuarios disponibles");
+                      }
 
-                      return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-                        stream: FirebaseFirestore.instance.collection('users').doc(myUid).snapshots(),
+                      return StreamBuilder<
+                        DocumentSnapshot<Map<String, dynamic>>
+                      >(
+                        stream: FirebaseFirestore.instance
+                            .collection('users')
+                            .doc(myUid)
+                            .snapshots(),
                         builder: (context, meSnap) {
-                          if (!meSnap.hasData) return const Center(child: CircularProgressIndicator());
+                          if (!meSnap.hasData) {
+                            return const Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          }
                           final myData = meSnap.data!.data();
-                          final myFriends = List<String>.from(myData?['friends'] ?? []);
-                          final myRequests = List<String>.from(myData?['friendRequests'] ?? []);
+                          final myFriends = List<String>.from(
+                            myData?['friends'] ?? [],
+                          );
+                          final myRequests = List<String>.from(
+                            myData?['friendRequests'] ?? [],
+                          );
 
                           return ListView.builder(
                             itemCount: users.length,
@@ -170,14 +256,14 @@ class _FriendsScreenState extends State<FriendsScreen> with TickerProviderStateM
                               final user = users[idx].data();
                               final userId = users[idx].id;
                               final isFriend = myFriends.contains(userId);
-                              final alreadyRequested = myRequests.contains(userId);
+                              final alreadyRequested = myRequests.contains(
+                                userId,
+                              );
 
                               return ListTile(
                                 leading: CircleAvatar(
-                                  backgroundImage: user['photoUrl'] != null && user['photoUrl'].isNotEmpty
-                                      ? NetworkImage(user['photoUrl'])
-                                      : null,
-                                  child: user['photoUrl'] == null || user['photoUrl'].isEmpty ? const Icon(Icons.person) : null,
+                                  radius: 22,
+                                  backgroundImage: getUserAvatar(user),
                                 ),
                                 title: Text(user['username'] ?? 'Usuario'),
                                 trailing: ElevatedButton(

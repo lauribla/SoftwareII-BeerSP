@@ -57,6 +57,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
-assets:
-  - default_avatar.png
+  assets:
+    - assets/default_avatar.png
