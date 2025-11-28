@@ -737,6 +737,44 @@ class SearchBarWidget extends StatefulWidget {
 class _SearchBarWidgetState extends State<SearchBarWidget> {
   String searchQuery = '';
   List<Map<String, dynamic>> results = [];
+  String searchType = 'Cervezas'; // Default selection
+  bool showFilters = false;
+
+  // Filter fields
+  String? estilo;
+  String? color;
+  String? tamano;
+  String? formato;
+  String? pais;
+  String? abvInterval;
+
+  final List<String> countryNames = [
+    'Afghanistan', 'Åland Islands', 'Albania', 'Algeria', 'American Samoa', 'Andorra', 'Angola', 'Anguilla', 
+    'Antigua and Barbuda', 'Argentina', 'Armenia', 'Aruba', 'Australia', 'Austria', 'Azerbaijan', 'Bahamas', 
+    'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 'Belgium', 'Belize', 'Benin', 'Bermuda', 'Bhutan', 'Bolivia', 
+    'Bosnia and Herzegovina', 'Botswana', 'Brazil', 'British Indian Ocean Territory', 'Brunei', 'Bulgaria', 'Burkina Faso', 
+    'Burundi', 'Cambodia', 'Cameroon', 'Canada', 'Cape Verde', 'Cayman Islands', 'Central African Republic', 'Chad', 
+    'Chile', 'China', 'Christmas Island', 'Cocos (Keeling) Islands', 'Colombia', 'Comoros', 'Democratic Republic Congo', 
+    'Republic of Congo', 'Cook Islands', 'Costa Rica', 'Côte d\'Ivoire', 'Croatia', 'Cuba', 'Curaçao', 'Cyprus', 'Czech Republic', 
+    'Denmark', 'Djibouti', 'Dominica', 'Dominican Republic', 'Ecuador', 'Egypt', 'El Salvador', 'Equatorial Guinea', 'Eritrea', 'Estonia', 
+    'Eswatini', 'Ethiopia', 'Falkland Islands', 'Faroe Islands', 'Fiji', 'Finland', 'France', 'French Guiana', 'French Polynesia', 'Gabon', 
+    'Gambia', 'Georgia', 'Germany', 'Ghana', 'Gibraltar', 'Greece', 'Greenland', 'Grenada', 'Guadeloupe', 'Guam', 'Guatemala', 'Guernsey', 
+    'Guinea Conakry', 'Guinea-Bissau', 'Guyana', 'Haiti', 'Honduras', 'Hong Kong', 'Hungary', 'Iceland',
+    'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland', 'Isle of Man', 'Israel', 'Italy', 'Jamaica', 'Japan', 'Jersey', 'Jordan', 'Kazakhstan', 
+    'Kenya', 'Kiribati', 'Kosovo', 'Kuwait', 'Kyrgyzstan', 'Laos', 'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein', 
+    'Lithuania', 'Luxembourg', 'Macau', 'North Macedonia','Madagascar', 'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta', 'Marshall Islands', 
+    'Martinique', 'Mauritania', 'Mauritius', 'Mayotte', 'Mexico', 'Micronesia', 'Moldova', 'Monaco', 'Mongolia', 'Montenegro', 'Montserrat', 
+    'Morocco', 'Mozambique', 'Myanmar [Burma]', 'Namibia', 'Nauru', 'Nepal', 'Netherlands', 'New Caledonia', 'New Zealand', 'Nicaragua', 'Niger',
+    'Nigeria', 'Niue', 'Norfolk Island', 'North Korea', 'Northern Mariana Islands', 'Norway', 'Oman', 'Pakistan', 'Palau', 'Palestinian Territories',
+    'Panama', 'Papua New Guinea', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal', 'Puerto Rico', 'Qatar', 'Réunion', 'Romania', 'Russia', 
+    'Rwanda', 'Saint Barthélemy', 'Saint Helena', 'St. Kitts', 'St. Lucia', 'Saint Martin', 'Saint Pierre and Miquelon', 'St. Vincent', 'Samoa', 
+    'San Marino', 'São Tomé and Príncipe', 'Saudi Arabia', 'Senegal', 'Serbia', 'Seychelles', 'Sierra Leone', 'Singapore', 'Sint Maarten', 'Slovakia', 
+    'Slovenia', 'Solomon Islands', 'Somalia', 'South Africa', 'South Korea', 'South Sudan', 'Spain', 
+    'Sri Lanka', 'Sudan', 'Suriname', 'Svalbard and Jan Mayen', 'Sweden', 'Switzerland', 'Syria', 'Taiwan', 'Tajikistan', 'Tanzania', 'Thailand', 'Togo',
+    'Tokelau', 'Tonga', 'Trinidad/Tobago', 'Tunisia', 'Turkey', 'Turkmenistan', 'Turks and Caicos Islands', 'Tuvalu', 'U.S. Virgin Islands', 'Uganda', 
+    'Ukraine', 'United Arab Emirates', 'United Kingdom', 'United States', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Vatican City', 'Venezuela', 'Vietnam', 
+    'Wallis and Futuna', 'Western Sahara', 'Yemen', 'Zambia', 'Zimbabwe'
+  ];
 
   Future<void> search(String query) async {
     setState(() {
@@ -744,96 +782,346 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
       results = [];
     });
 
-    if (query.trim().isEmpty) return;
-
     final q = query.toLowerCase();
 
-    final beersSnap = await FirebaseFirestore.instance
-        .collection('beers')
-        .get();
-    final venuesSnap = await FirebaseFirestore.instance
-        .collection('venues')
-        .get();
+    if (searchType == 'Cervezas') {
+      final beersSnap = await FirebaseFirestore.instance.collection('beers').get();
 
-    final filteredBeers = beersSnap.docs
-        .where((d) => (d['name'] ?? '').toString().toLowerCase().contains(q))
-        .map(
-          (d) => {
-            'nombre': d['name'],
-            'tipo': 'Cerveza',
-            'beerId': d.id,
-            'photoUrl': d['photoUrl'] ?? '',
-          },
-        );
+      final filteredBeers = beersSnap.docs.where((d) {
+        final nameMatch = (d['name'] ?? '').toString().toLowerCase().contains(q);
+        final estiloMatch = estilo == null || d['style'] == estilo;
+        final colorMatch = color == null || d['color'] == color;
+        final tamanoMatch = tamano == null || d['size'] == tamano;
+        final formatoMatch = formato == null || d['format'] == formato;
+        final paisMatch = pais == null || d['originCountry'] == pais;
+        return nameMatch && estiloMatch && colorMatch && tamanoMatch && formatoMatch && paisMatch;
+      }).map((d) => {
+        'nombre': d['name'],
+        'tipo': 'Cerveza',
+        'beerId': d.id,
+        'photoUrl': d['photoUrl'] ?? '',
+      });
 
-    final filteredVenues = venuesSnap.docs
-        .where((d) => (d['name'] ?? '').toString().toLowerCase().contains(q))
-        .map((d) => {'nombre': d['name'], 'tipo': 'Local', 'venueId': d.id});
+      setState(() {
+        results = [...filteredBeers];
+      });
+    } else {
+      final venuesSnap = await FirebaseFirestore.instance.collection('venues').get();
 
-    setState(() {
-      results = [...filteredBeers, ...filteredVenues];
-    });
+      final filteredVenues = venuesSnap.docs.where((d) {
+        final nameMatch = (d['name'] ?? '').toString().toLowerCase().contains(q);
+        final paisMatch = pais == null || d['country'] == pais;
+        return nameMatch && paisMatch;
+      }).map((d) => {
+        'nombre': d['name'],
+        'tipo': 'Local',
+        'venueId': d.id,
+      });
+
+      setState(() {
+        results = [...filteredVenues];
+      });
+    }
+  }
+
+  void _applyFilters() {
+    search(searchQuery);
+    setState(() => showFilters = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        TextField(
-          onChanged: search,
-          decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.search),
-            hintText: 'Buscar cervezas o locales...',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            filled: true,
-            fillColor: Colors.white,
-          ),
+        Row(
+          children: [
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 2.0),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: searchType,
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'Cervezas',
+                        child: Text('Cervezas'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Locales',
+                        child: Text('Locales'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        searchType = value!;
+                        // Reset filters when changing type
+                        estilo = null;
+                        color = null;
+                        tamano = null;
+                        formato = null;
+                        pais = null;
+                        abvInterval = null;
+                        search(searchQuery);
+                      });
+                    },
+                    style: Theme.of(context).textTheme.bodyMedium,
+                    borderRadius: BorderRadius.circular(12),
+                    icon: const Icon(Icons.arrow_drop_down),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextField(
+                onChanged: search,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: 'Buscar ${searchType.toLowerCase()}...',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => setState(() => showFilters = !showFilters),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.filter_alt, color: Color.fromARGB(255, 100, 95, 38)),
+                      SizedBox(width: 6),
+                      Text('Filtros', style: TextStyle(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 10),
-        if (searchQuery.isNotEmpty)
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6),
-              ],
-            ),
-            child: Column(
-              children: results.map((r) {
-                final photoUrl = r['photoUrl'] ?? '';
-
-                return ListTile(
-                  leading: (r['tipo'] == 'Cerveza' && photoUrl.isNotEmpty)
-                      ? CircleAvatar(
-                          radius: 22,
-                          backgroundImage: NetworkImage(photoUrl),
-                        )
-                      : Icon(
-                          r['tipo'] == 'Cerveza'
-                              ? Icons.sports_bar
-                              : Icons.location_on,
-                          color: Colors.amber[800],
-                          size: 28,
+        if (showFilters)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Search results on the left
+              Expanded(
+                flex: 2,
+                child: Column(
+                  children: [
+                    const SizedBox(height: 10),
+                    if (searchQuery.isNotEmpty)
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6),
+                          ],
                         ),
-                  title: Text(r['nombre']),
-                  subtitle: Text(r['tipo']),
-                  onTap: () {
-                    if (r['tipo'] == 'Cerveza') {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => BeerDetailScreen(
-                            beerId: r['beerId'],
-                            tastingId: 'preview', // marcador
+                        child: Column(
+                          children: results.map((r) {
+                            final photoUrl = r['photoUrl'] ?? '';
+                            return ListTile(
+                              leading: (r['tipo'] == 'Cerveza' && photoUrl.isNotEmpty)
+                                  ? CircleAvatar(
+                                      radius: 22,
+                                      backgroundImage: NetworkImage(photoUrl),
+                                    )
+                                  : Icon(
+                                      r['tipo'] == 'Cerveza'
+                                          ? Icons.sports_bar
+                                          : Icons.location_on,
+                                      color: Colors.amber[800],
+                                      size: 28,
+                                    ),
+                              title: Text(r['nombre']),
+                              subtitle: Text(r['tipo']),
+                              onTap: () {
+                                if (r['tipo'] == 'Cerveza') {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => BeerDetailScreen(
+                                        beerId: r['beerId'],
+                                        tastingId: 'preview',
+                                      ),
+                                    ),
+                                  );
+                                }
+                                // Add navigation for Locales if needed
+                              },
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Filtros card on the right
+              SizedBox(
+                width: 286, // Adjust width as needed
+                child: Card(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      children: [
+                        if (searchType == 'Cervezas') ...[
+                          DropdownButtonFormField<String>(
+                            value: estilo,
+                            decoration: const InputDecoration(labelText: "Estilo", isDense: true),
+                            items: [
+                              'Lager', 'IPA', 'APA', 'Stout', 'Saison', 'Porter', 'Pilsner', 'Weissbier', 'Sour Ale', 'Lambic', 'Amber Ale'
+                            ].map((e) => DropdownMenuItem(value: e, child: Text(e, style: TextStyle(fontSize: 14),))).toList(),
+                            onChanged: (v) => setState(() => estilo = v),
                           ),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            value: color,
+                            decoration: const InputDecoration(labelText: "Color", isDense: true),
+                            items: [
+                              'Dorado claro', 'Amarillo dorado', 'Ambar claro', 'Marrón oscuro', 'Negro opaco'
+                            ].map((e) => DropdownMenuItem(value: e, child: Text(e, style: TextStyle(fontSize: 14),))).toList(),
+                            onChanged: (v) => setState(() => color = v),
+                          ),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            value: tamano,
+                            decoration: const InputDecoration(labelText: "Tamaño", isDense: true),
+                            items: [
+                              'Pinta', 'Media pinta', 'Tercio'
+                            ].map((e) => DropdownMenuItem(value: e, child: Text(e, style: TextStyle(fontSize: 14),))).toList(),
+                            onChanged: (v) => setState(() => tamano = v),
+                          ),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            value: formato,
+                            decoration: const InputDecoration(labelText: "Formato", isDense: true),
+                            items: [
+                              'Barril', 'Lata', 'Botella'
+                            ].map((e) => DropdownMenuItem(value: e, child: Text(e, style: TextStyle(fontSize: 14),))).toList(),
+                            onChanged: (v) => setState(() => formato = v),
+                          ),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            value: pais,
+                            decoration: const InputDecoration(labelText: "Origen", isDense: true),
+                            items:countryNames.map((e) => DropdownMenuItem(value: e, child: Text(e, style: TextStyle(fontSize: 14),))).toList(),
+                            onChanged: (v) => setState(() => pais = v),
+                          ),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            value: abvInterval,
+                            decoration: const InputDecoration(labelText: "Alcohol %", isDense: true),
+                            items: [
+                              '0–3%', '3–5%', '5–7%', '7%+'
+                            ].map((e) => DropdownMenuItem(value: e, child: Text(e, style: TextStyle(fontSize: 14),))).toList(),
+                            onChanged: (v) => setState(() => abvInterval = v),
+                          ),
+                        ] else ...[
+                          DropdownButtonFormField<String>(
+                            value: pais,
+                            decoration: const InputDecoration(labelText: "País", isDense: true),
+                            items: [
+                              'España', 'Alemania', 'Bélgica', 'Estados Unidos', 'Reino Unido', 'México', 'Argentina', 'Japón', 'Otro'
+                            ].map((e) => DropdownMenuItem(value: e, child: Text(e, style: TextStyle(fontSize: 14),))).toList(),
+                            onChanged: (v) => setState(() => pais = v),
+                          ),
+                        ],
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton(
+                              onPressed: () => setState(() {
+                                estilo = null;
+                                color = null;
+                                tamano = null;
+                                formato = null;
+                                pais = null;
+                                abvInterval = null;
+                                showFilters = false;
+                                search(searchQuery);
+                              }),
+                              child: const Text("Limpiar"),
+                            ),
+                            ElevatedButton(
+                              onPressed: _applyFilters,
+                              child: const Text("Aplicar filtros"),
+                            ),
+                          ],
                         ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          )
+        else
+          // Show only results if filters are hidden
+          Column(
+            children: [
+              const SizedBox(height: 10),
+              if (searchQuery.isNotEmpty)
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6),
+                    ],
+                  ),
+                  child: Column(
+                    children: results.map((r) {
+                      final photoUrl = r['photoUrl'] ?? '';
+                      return ListTile(
+                        leading: (r['tipo'] == 'Cerveza' && photoUrl.isNotEmpty)
+                            ? CircleAvatar(
+                                radius: 22,
+                                backgroundImage: NetworkImage(photoUrl),
+                              )
+                            : Icon(
+                                r['tipo'] == 'Cerveza'
+                                    ? Icons.sports_bar
+                                    : Icons.location_on,
+                                color: Colors.amber[800],
+                                size: 28,
+                              ),
+                        title: Text(r['nombre']),
+                        subtitle: Text(r['tipo']),
+                        onTap: () {
+                          if (r['tipo'] == 'Cerveza') {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => BeerDetailScreen(
+                                  beerId: r['beerId'],
+                                  tastingId: 'preview',
+                                ),
+                              ),
+                            );
+                          }
+                          // Add navigation for Locales if needed
+                        },
                       );
-                    }
-                  },
-                );
-              }).toList(),
-            ),
+                    }).toList(),
+                  ),
+                ),
+            ],
           ),
       ],
     );
