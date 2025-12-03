@@ -1,0 +1,12 @@
+{
+  "galardones": [
+    {
+      "id": "catador_global",
+      "nombre": "Catador global",
+      "descripcion": "Por registrar degustaciones.",
+      "imagen": "https://cdn-icons-png.flaticon.com/512/763/763812.png",
+      "metric": "tastingsTotal",
+      "niveles": [5, 10, 25, 50, 100]
+    }
+  ]
+}

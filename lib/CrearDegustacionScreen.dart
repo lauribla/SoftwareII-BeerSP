@@ -9,6 +9,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
+import 'award_manager.dart';
+
 
 import 'CrearCervezaScreen.dart';
 import 'CrearLocalScreen.dart';
@@ -142,6 +144,13 @@ class _CrearDegustacionScreenState extends State<CrearDegustacionScreen> {
       });
 
       final userRef = FirebaseFirestore.instance.collection('users').doc(myUid);
+      final userSnap = await userRef.get();
+      final stats = (userSnap.data()?['stats'] as Map<String, dynamic>?) ?? {};
+
+      final int currentTastingsTotal =
+          stats['tastingsTotal'] is num ? (stats['tastingsTotal'] as num).toInt() : 0;
+      final int newTastingsTotal = currentTastingsTotal + 1;
+
       await userRef.set({
         'stats': {
           'tastingsTotal': FieldValue.increment(1),
@@ -149,12 +158,25 @@ class _CrearDegustacionScreenState extends State<CrearDegustacionScreen> {
         }
       }, SetOptions(merge: true));
 
+      // Comprobar si hay nuevos galardones por degustaciones
+      final newAwards = await AwardManager.checkAndGrantTastingAwards(
+        uid: myUid,
+        tastingsTotal: newTastingsTotal,
+      );
+
+      if (mounted && newAwards.isNotEmpty) {
+        for (final award in newAwards) {
+          await _showAwardDialog(award);
+        }
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Degustación registrada')),
+          const SnackBar(content: Text('Degustacion registrada')),
         );
         context.go('/');
       }
+
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
@@ -321,6 +343,49 @@ class _CrearDegustacionScreenState extends State<CrearDegustacionScreen> {
       },
     );
   }
+
+Future<void> _showAwardDialog(UnlockedAward award) async {
+  if (!mounted) return;
+
+  await showDialog(
+    context: context,
+    barrierDismissible: true,
+    builder: (ctx) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Nuevo galardon',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            CircleAvatar(
+              radius: 32,
+              backgroundImage: NetworkImage(award.imageUrl),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              award.name,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            Text('Nivel ${award.level}'),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Vale'),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {
