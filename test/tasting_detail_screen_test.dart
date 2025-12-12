@@ -4,44 +4,44 @@ import 'package:beersp_demo/TastingDetailScreen.dart';
 
 void main() {
   test('TastingDetailScreen es StatelessWidget', () {
-    const screen = TastingDetailScreen(beerId: 'abc');
+    const screen = TastingDetailScreen(tastingId: 'abc');
     expect(screen, isA<StatelessWidget>());
   });
 
-  test('TastingDetailScreen recibe beerId correctamente', () {
-    const screen = TastingDetailScreen(beerId: 'cerveza123');
-    expect(screen.beerId, 'cerveza123');
+  test('TastingDetailScreen recibe tastingId correctamente', () {
+    const screen = TastingDetailScreen(tastingId: 'cerveza123');
+    expect(screen.tastingId, 'cerveza123');
   });
 
   test('TastingDetailScreen crea instancias distintas', () {
-    const a = TastingDetailScreen(beerId: '1');
-    const b = TastingDetailScreen(beerId: '2');
+    const a = TastingDetailScreen(tastingId: '1');
+    const b = TastingDetailScreen(tastingId: '2');
     expect(a, isNot(same(b)));
   });
 
   test('TastingDetailScreen tiene metodo build', () {
-    const screen = TastingDetailScreen(beerId: 'id');
+    const screen = TastingDetailScreen(tastingId: 'id');
     expect(screen.build, isA<Function>());
   });
 
   test('TastingDetailScreen tiene constructor const', () {
-    const screen = TastingDetailScreen(beerId: 'a');
+    const screen = TastingDetailScreen(tastingId: 'a');
     expect(screen, isNotNull);
   });
 
   test('TastingDetailScreen tiene key nula por defecto', () {
-    const screen = TastingDetailScreen(beerId: 'a');
+    const screen = TastingDetailScreen(tastingId: 'a');
     expect(screen.key, isNull);
   });
 
   test('TastingDetailScreen createElement produce un StatelessElement', () {
-    const screen = TastingDetailScreen(beerId: 'a');
+    const screen = TastingDetailScreen(tastingId: 'a');
     final element = screen.createElement();
     expect(element, isA<StatelessElement>());
   });
 
   test('TastingDetailScreen es un widget valido', () {
-    const screen = TastingDetailScreen(beerId: 'a');
+    const screen = TastingDetailScreen(tastingId: 'a');
     expect(screen, isA<Widget>());
   });
 

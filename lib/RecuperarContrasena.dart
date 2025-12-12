@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class RecuperarContrasena extends StatelessWidget {
-  final TextEditingController _emailController = TextEditingController();
+class RecuperarContrasena extends StatefulWidget {
+  const RecuperarContrasena({super.key});
 
-  RecuperarContrasena({super.key});
+  @override
+  State<RecuperarContrasena> createState() => _RecuperarContrasenaState();
+}
+
+class _RecuperarContrasenaState extends State<RecuperarContrasena> {
+  final TextEditingController _emailController = TextEditingController();
 
   Future<void> _sendPasswordResetEmail(BuildContext context) async {
     final email = _emailController.text.trim();
@@ -16,7 +21,7 @@ class RecuperarContrasena extends StatelessWidget {
       return;
     }
 
-    try { // Intentar enviar un correo para restablecer la contraseña
+    try {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
       showDialog(
         context: context,
@@ -52,6 +57,12 @@ class RecuperarContrasena extends StatelessWidget {
         const SnackBar(content: Text('Ocurrió un error inesperado.')),
       );
     }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
   }
 
   @override
