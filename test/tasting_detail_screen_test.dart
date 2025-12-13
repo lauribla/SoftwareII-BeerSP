@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:beersp_demo/TastingDetailScreen.dart';
 
 void main() {
-  test('TastingDetailScreen es StatelessWidget', () {
+  test('TastingDetailScreen es StatefulWidget', () {
     const screen = TastingDetailScreen(tastingId: 'abc');
-    expect(screen, isA<StatelessWidget>());
+    expect(screen, isA<StatefulWidget>());
   });
 
   test('TastingDetailScreen recibe tastingId correctamente', () {
@@ -34,10 +34,10 @@ void main() {
     expect(screen.key, isNull);
   });
 
-  test('TastingDetailScreen createElement produce un StatelessElement', () {
+  test('TastingDetailScreen createElement produce un StatefulElement', () {
     const screen = TastingDetailScreen(tastingId: 'a');
     final element = screen.createElement();
-    expect(element, isA<StatelessElement>());
+    expect(element, isA<StatefulElement>());
   });
 
   test('TastingDetailScreen es un widget valido', () {
