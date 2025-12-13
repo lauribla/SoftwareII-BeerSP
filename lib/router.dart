@@ -119,9 +119,9 @@ final appRouter = GoRouter(
 
     // Detalle de degustación
     GoRoute(
-      path: '/tasting/detail',
+      path: '/tasting/:id',
       builder: (context, state) {
-        final tastingId = state.extra as String;
+        final tastingId = state.pathParameters['id']!;
         return TastingDetailScreen(tastingId: tastingId);
       },
     ),
