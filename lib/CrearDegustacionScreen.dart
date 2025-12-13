@@ -53,17 +53,18 @@ class _CrearDegustacionScreenState extends State<CrearDegustacionScreen> {
     }
   }
 
-  Future<String?> _uploadImage(String beerId) async {
+  Future<String?> _uploadImage(String tastingId) async {
     if (_imageFile == null && _webImage == null) return null;
+    // Subida - web
     if (kIsWeb && _webImage != null) {
       try {
         const apiKey = "c25c03fcf2ff1d284b05c5e2478dc842";
         final url = Uri.parse('https://api.imgbb.com/1/upload?key=$apiKey');
         final base64Image = base64Encode(_webImage!);
-        final response = await http.post(url, body: {
-          'image': base64Image,
-          'name': 'beer_$beerId',
-        });
+        final response = await http.post(
+          url,
+          body: {'image': base64Image, 'name': 'tasting_$tastingId'},
+        );
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
           return data['data']['url'];
@@ -72,9 +73,12 @@ class _CrearDegustacionScreenState extends State<CrearDegustacionScreen> {
         return null;
       }
     }
+    // Subida - móvil
     if (_imageFile != null) {
       try {
-        final ref = FirebaseStorage.instance.ref().child("beers/$beerId.jpg");
+        final ref = FirebaseStorage.instance.ref().child(
+          "tastings/$tastingId.jpg",
+        );
         await ref.putFile(_imageFile!);
         return await ref.getDownloadURL();
       } catch (e) {
@@ -94,11 +98,14 @@ class _CrearDegustacionScreenState extends State<CrearDegustacionScreen> {
     }
 
     setState(() => _loading = true);
+
     try {
       final myUid = FirebaseAuth.instance.currentUser!.uid;
 
+      // Crear o tomar cerveza existente
       final beersRef = FirebaseFirestore.instance.collection('beers');
       String beerId;
+
       if (!selectedBeer!.containsKey('id')) {
         final newBeer = await beersRef.add(selectedBeer!);
         beerId = newBeer.id;
@@ -106,8 +113,10 @@ class _CrearDegustacionScreenState extends State<CrearDegustacionScreen> {
         beerId = selectedBeer!['id'];
       }
 
+      // Crear o tomar local existente
       final venuesRef = FirebaseFirestore.instance.collection('venues');
       String venueId;
+
       if (!selectedVenue!.containsKey('id')) {
         final newVenue = await venuesRef.add(selectedVenue!);
         venueId = newVenue.id;
@@ -115,24 +124,46 @@ class _CrearDegustacionScreenState extends State<CrearDegustacionScreen> {
         venueId = selectedVenue!['id'];
       }
 
-      final photoUrl = await _uploadImage(beerId);
+      // Crear degustación SIN foto todavía
+      final tastingRef = await FirebaseFirestore.instance
+          .collection('tastings')
+          .add({
+            'userUid': myUid,
+            'beerId': beerId,
+            'venueId': venueId,
+            'rating': rating,
+            'comment': _commentCtrl.text.trim(),
+            'photoUrl': null, // se actualiza luego
+            'isFavorite': _isFavorite,
+            'createdAt': FieldValue.serverTimestamp(),
+            'createdAtLocal': DateTime.now().toIso8601String(),
+          });
+
+      // SUBIR FOTO (si existe), asociada a tastingId
+      final photoUrl = await _uploadImage(tastingRef.id);
+
       if (photoUrl != null) {
-        await beersRef.doc(beerId).update({'photoUrl': photoUrl});
+        await tastingRef.update({'photoUrl': photoUrl});
       }
 
-      final tastingRef =
-          await FirebaseFirestore.instance.collection('tastings').add({
-        'userUid': myUid,
-        'beerId': beerId,
-        'venueId': venueId,
-        'rating': rating,
-        'comment': _commentCtrl.text.trim(),
-        'photoUrl': photoUrl,
-        'isFavorite': _isFavorite,
-        'createdAt': FieldValue.serverTimestamp(),
-        'createdAtLocal': DateTime.now().toIso8601String(),
-      });
+      // Si la cerveza NO tenía foto oficial, usar esta
+      if (photoUrl != null && photoUrl.isNotEmpty) {
+        final beerDoc = await FirebaseFirestore.instance
+            .collection('beers')
+            .doc(beerId)
+            .get();
 
+        final currentBeerPhoto = beerDoc.data()?['photoUrl'];
+
+        if (currentBeerPhoto == null || currentBeerPhoto.isEmpty) {
+          await FirebaseFirestore.instance
+              .collection('beers')
+              .doc(beerId)
+              .update({'photoUrl': photoUrl});
+        }
+      }
+
+      // Registrar actividad
       await FirebaseFirestore.instance.collection('activities').add({
         'type': 'tasting',
         'actorUid': myUid,
@@ -141,24 +172,25 @@ class _CrearDegustacionScreenState extends State<CrearDegustacionScreen> {
         'public': true,
       });
 
+      // Stats del usuario
       final userRef = FirebaseFirestore.instance.collection('users').doc(myUid);
       await userRef.set({
         'stats': {
           'tastingsTotal': FieldValue.increment(1),
           'tastings7d': FieldValue.increment(1),
-        }
+        },
       }, SetOptions(merge: true));
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Degustación registrada')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Degustación registrada')));
         context.go('/');
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       setState(() => _loading = false);
     }
@@ -179,65 +211,70 @@ class _CrearDegustacionScreenState extends State<CrearDegustacionScreen> {
             right: 16,
             top: 16,
           ),
-          child: StatefulBuilder(builder: (context, setStateModal) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: searchCtrl,
-                  decoration: const InputDecoration(
-                    hintText: 'Buscar cerveza...',
-                    prefixIcon: Icon(Icons.search),
-                  ),
-                  onChanged: (value) async {
-                    if (value.trim().isEmpty) {
-                      setStateModal(() => results = []);
-                      return;
-                    }
-                    final snap =
-                        await FirebaseFirestore.instance.collection('beers').get();
-                    setStateModal(() {
-                      results = snap.docs
-                          .where((d) =>
-                              (d['name'] ?? '').toString().toLowerCase().contains(
-                                    value.toLowerCase(),
-                                  ))
-                          .map((d) => {'id': d.id, 'name': d['name']})
-                          .toList();
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                if (results.isEmpty)
-                  TextButton.icon(
-                    icon: const Icon(Icons.add),
-                    label: const Text("Registrar nueva cerveza"),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      context.push('/cerveza/new');
+          child: StatefulBuilder(
+            builder: (context, setStateModal) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: searchCtrl,
+                    decoration: const InputDecoration(
+                      hintText: 'Buscar cerveza...',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                    onChanged: (value) async {
+                      if (value.trim().isEmpty) {
+                        setStateModal(() => results = []);
+                        return;
+                      }
+                      final snap = await FirebaseFirestore.instance
+                          .collection('beers')
+                          .get();
+                      setStateModal(() {
+                        results = snap.docs
+                            .where(
+                              (d) => (d['name'] ?? '')
+                                  .toString()
+                                  .toLowerCase()
+                                  .contains(value.toLowerCase()),
+                            )
+                            .map((d) => {'id': d.id, 'name': d['name']})
+                            .toList();
+                      });
                     },
                   ),
-                if (results.isNotEmpty)
-                  SizedBox(
-                    height: 300,
-                    child: ListView.builder(
-                      itemCount: results.length,
-                      itemBuilder: (context, index) {
-                        final beer = results[index];
-                        return ListTile(
-                          title: Text(beer['name']),
-                          onTap: () {
-                            selectedBeer = beer;
-                            Navigator.pop(context);
-                            setState(() {});
-                          },
-                        );
+                  const SizedBox(height: 12),
+                  if (results.isEmpty)
+                    TextButton.icon(
+                      icon: const Icon(Icons.add),
+                      label: const Text("Registrar nueva cerveza"),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        context.push('/cerveza/new');
                       },
                     ),
-                  ),
-              ],
-            );
-          }),
+                  if (results.isNotEmpty)
+                    SizedBox(
+                      height: 300,
+                      child: ListView.builder(
+                        itemCount: results.length,
+                        itemBuilder: (context, index) {
+                          final beer = results[index];
+                          return ListTile(
+                            title: Text(beer['name']),
+                            onTap: () {
+                              selectedBeer = beer;
+                              Navigator.pop(context);
+                              setState(() {});
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
         );
       },
     );
@@ -258,65 +295,70 @@ class _CrearDegustacionScreenState extends State<CrearDegustacionScreen> {
             right: 16,
             top: 16,
           ),
-          child: StatefulBuilder(builder: (context, setStateModal) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: searchCtrl,
-                  decoration: const InputDecoration(
-                    hintText: 'Buscar local...',
-                    prefixIcon: Icon(Icons.search),
-                  ),
-                  onChanged: (value) async {
-                    if (value.trim().isEmpty) {
-                      setStateModal(() => results = []);
-                      return;
-                    }
-                    final snap =
-                        await FirebaseFirestore.instance.collection('venues').get();
-                    setStateModal(() {
-                      results = snap.docs
-                          .where((d) =>
-                              (d['name'] ?? '').toString().toLowerCase().contains(
-                                    value.toLowerCase(),
-                                  ))
-                          .map((d) => {'id': d.id, 'name': d['name']})
-                          .toList();
-                    });
-                  },
-                ),
-                const SizedBox(height: 12),
-                if (results.isEmpty)
-                  TextButton.icon(
-                    icon: const Icon(Icons.add),
-                    label: const Text("Registrar nuevo local"),
-                    onPressed: () {
-                      Navigator.pop(context);
-                      context.push('/local/new');
+          child: StatefulBuilder(
+            builder: (context, setStateModal) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: searchCtrl,
+                    decoration: const InputDecoration(
+                      hintText: 'Buscar local...',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                    onChanged: (value) async {
+                      if (value.trim().isEmpty) {
+                        setStateModal(() => results = []);
+                        return;
+                      }
+                      final snap = await FirebaseFirestore.instance
+                          .collection('venues')
+                          .get();
+                      setStateModal(() {
+                        results = snap.docs
+                            .where(
+                              (d) => (d['name'] ?? '')
+                                  .toString()
+                                  .toLowerCase()
+                                  .contains(value.toLowerCase()),
+                            )
+                            .map((d) => {'id': d.id, 'name': d['name']})
+                            .toList();
+                      });
                     },
                   ),
-                if (results.isNotEmpty)
-                  SizedBox(
-                    height: 300,
-                    child: ListView.builder(
-                      itemCount: results.length,
-                      itemBuilder: (context, index) {
-                        final venue = results[index];
-                        return ListTile(
-                          title: Text(venue['name']),
-                          onTap: () {
-                            selectedVenue = venue;
-                            Navigator.pop(context);
-                            setState(() {});
-                          },
-                        );
+                  const SizedBox(height: 12),
+                  if (results.isEmpty)
+                    TextButton.icon(
+                      icon: const Icon(Icons.add),
+                      label: const Text("Registrar nuevo local"),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        context.push('/local/new');
                       },
                     ),
-                  ),
-              ],
-            );
-          }),
+                  if (results.isNotEmpty)
+                    SizedBox(
+                      height: 300,
+                      child: ListView.builder(
+                        itemCount: results.length,
+                        itemBuilder: (context, index) {
+                          final venue = results[index];
+                          return ListTile(
+                            title: Text(venue['name']),
+                            onTap: () {
+                              selectedVenue = venue;
+                              Navigator.pop(context);
+                              setState(() {});
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
         );
       },
     );
@@ -359,21 +401,15 @@ class _CrearDegustacionScreenState extends State<CrearDegustacionScreen> {
               ),
               const SizedBox(height: 16),
               if (kIsWeb && _webImage != null)
-  SizedBox(
-    height: 200, // altura máxima
-    child: Image.memory(
-      _webImage!,
-      fit: BoxFit.contain,
-    ),
-  )
-else if (!kIsWeb && _imageFile != null)
-  SizedBox(
-    height: 200,
-    child: Image.file(
-      _imageFile!,
-      fit: BoxFit.contain,
-    ),
-  ),
+                SizedBox(
+                  height: 200, // altura máxima
+                  child: Image.memory(_webImage!, fit: BoxFit.contain),
+                )
+              else if (!kIsWeb && _imageFile != null)
+                SizedBox(
+                  height: 200,
+                  child: Image.file(_imageFile!, fit: BoxFit.contain),
+                ),
               TextButton.icon(
                 onPressed: _pickImage,
                 icon: const Icon(Icons.photo),
@@ -439,15 +475,10 @@ class StarRating extends StatelessWidget {
               final width = 44.0; // tamaño del icono (coincide con size)
               final isLeftHalf = localX < width / 2;
 
-              final newRating =
-                  isLeftHalf ? (index + 0.5) : (index + 1.0);
+              final newRating = isLeftHalf ? (index + 0.5) : (index + 1.0);
               onRatingChanged(newRating);
             },
-            child: Icon(
-              icon,
-              color: Colors.amber,
-              size: 44,
-            ),
+            child: Icon(icon, color: Colors.amber, size: 44),
           );
         }),
       ),
