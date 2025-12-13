@@ -19,11 +19,12 @@ void main() {
     expect(a, isNot(same(b)));
   });
 
-  test('TastingDetailScreen tiene metodo build', () {
-    const screen = TastingDetailScreen(tastingId: 'id');
-    expect(screen.build, isA<Function>());
+  test('TastingDetailScreen crea un objeto State', () {
+    final widget = TastingDetailScreen(tastingId: 'id');
+    final state = widget.createState();
+    expect(state, isA<State<TastingDetailScreen>>());
   });
-
+  
   test('TastingDetailScreen tiene constructor const', () {
     const screen = TastingDetailScreen(tastingId: 'a');
     expect(screen, isNotNull);
