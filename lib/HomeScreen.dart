@@ -323,13 +323,13 @@ class HomeScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // ⭐ Top degustaciones + Galardones (responsive)
+            // Top degustaciones + Galardones (responsive)
             if (uid != null)
               LayoutBuilder(
                 builder: (context, constraints) {
                   final isNarrow = constraints.maxWidth < 600;
 
-                  // ----------- WIDGET TOP DEGUSTACIONES (tu versión mejorada) -------------
+                  // ----------- WIDGET TOP DEGUSTACIONES -------------
                   final topDegustacionesWidget =
                       StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                         stream: _loadTopDegustaciones(uid),
@@ -411,15 +411,22 @@ class HomeScreen extends StatelessWidget {
                                         final name =
                                             beer['name'] ?? 'Desconocida';
                                         final style = beer['style'] ?? '—';
-                                        final photoUrl = beer['photoUrl'] ?? '';
                                         final rating = doc['rating'] ?? 0;
+
+                                        // foto propia de la degustación
+                                        final tastingData = doc.data();
+                                        final tastingPhotoUrl =
+                                            (tastingData['photoUrl'] ?? '')
+                                                as String;
 
                                         return Card(
                                           child: ListTile(
-                                            leading: photoUrl.isNotEmpty
+                                            leading: tastingPhotoUrl.isNotEmpty
                                                 ? CircleAvatar(
                                                     backgroundImage:
-                                                        NetworkImage(photoUrl),
+                                                        NetworkImage(
+                                                          tastingPhotoUrl,
+                                                        ),
                                                   )
                                                 : const Icon(
                                                     Icons.local_drink,
@@ -439,7 +446,7 @@ class HomeScreen extends StatelessWidget {
                         },
                       );
 
-                  // ----------- WIDGET GALARDONES (tu versión) -------------
+                  // ----------- WIDGET GALARDONES -------------
                   final galardonesWidget =
                       StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                         stream: _loadBadges(uid),
@@ -558,13 +565,18 @@ class HomeScreen extends StatelessWidget {
                                   final userData = userSnap.data ?? {};
                                   final actorName =
                                       userData['username'] ?? "Usuario";
-                                  final actorPhotoUrl =
-                                      userData['photoUrl'] ?? "";
-
                                   final createdAt =
                                       (doc['createdAt'] as Timestamp?)
                                           ?.toDate();
                                   final type = doc['type'] ?? 'actividad';
+
+                                  // Obtener tastingId si existe
+                                  final targetIds = doc['targetIds'] ?? {};
+                                  final tastingId =
+                                      (doc['targetIds'] ?? {})['tastingId'] ??
+                                      doc['tastingId'];
+
+                                  // Descripción bonita
                                   String description;
                                   switch (type) {
                                     case 'tasting':
@@ -579,6 +591,7 @@ class HomeScreen extends StatelessWidget {
                                     default:
                                       description = type.toString();
                                   }
+
                                   return ListTile(
                                     leading: AvatarUsuario(
                                       userId: doc['actorUid'],
@@ -588,6 +601,14 @@ class HomeScreen extends StatelessWidget {
                                     subtitle: Text(
                                       "$description\n${createdAt != null ? createdAt.toLocal().toString().split(' ')[0] : 'sin fecha'}",
                                     ),
+
+                                    // NAVEGACIÓN A TASTING DETAIL
+                                    onTap: () {
+                                      if (type == 'tasting' &&
+                                          tastingId != null) {
+                                        context.push('/tasting/$tastingId');
+                                      }
+                                    },
                                   );
                                 },
                               ),
@@ -606,7 +627,7 @@ class HomeScreen extends StatelessWidget {
                 stream: FirebaseFirestore.instance
                     .collection('tastings')
                     .where('userUid', isEqualTo: uid)
-                    .snapshots(), // sin orderBy → sin índices compuestos
+                    .snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Card(
@@ -648,6 +669,7 @@ class HomeScreen extends StatelessWidget {
                             'Pulsa la estrella para marcar favoritas',
                           ),
                         ),
+
                         for (final d in degustaciones)
                           FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
                             future: FirebaseFirestore.instance
@@ -667,7 +689,9 @@ class HomeScreen extends StatelessWidget {
                               final beerName =
                                   beer['name'] ?? 'Cerveza desconocida';
                               final style = beer['style'] ?? '—';
-                              final photoUrl = beer['photoUrl'] ?? '';
+                              final tastingData = d.data();
+                              final photoUrl =
+                                  (tastingData['photoUrl'] ?? '') as String;
                               final rating = d.data().containsKey('rating')
                                   ? d['rating']
                                   : 0;
@@ -698,12 +722,10 @@ class HomeScreen extends StatelessWidget {
                                         .update({'isFavorite': !isFav});
                                   },
                                 ),
+
+                                // NAVEGACIÓN A LA NUEVA RUTA DINÁMICA
                                 onTap: () {
-                                  context.push(
-                                    '/tasting/detail',
-                                    extra: d
-                                        .id, // 👈 usamos el ID de la degustación
-                                  );
+                                  context.push('/tasting/${d.id}');
                                 },
                               );
                             },
