@@ -75,120 +75,125 @@ class _BeerDetailScreenState extends State<BeerDetailScreen> {
     }
   }
 
-  /// Carga todos los comentarios de TODAS las degustaciones de esta cerveza.
+  /// Carga los comentarios de TODAS las degustaciones de esta cerveza
   Future<List<Map<String, dynamic>>> _loadAllCommentsForBeer() async {
-    final qsTastings = await FirebaseFirestore.instance
+    final tastingsSnap = await FirebaseFirestore.instance
         .collection('tastings')
         .where('beerId', isEqualTo: widget.beerId)
         .get();
 
-    final List<Map<String, dynamic>> all = [];
-    for (final t in qsTastings.docs) {
-      final qsComments = await t.reference
+    final List<Map<String, dynamic>> grouped = [];
+
+    for (final tastingDoc in tastingsSnap.docs) {
+      final tastingId = tastingDoc.id;
+      final tasting = tastingDoc.data();
+
+      final rating = tasting['rating'];
+      final userUid = tasting['userUid'];
+      final venueId = tasting['venueId'];
+      final createdAt = tasting['createdAt'];
+
+      // Usuario
+      final userSnap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userUid)
+          .get();
+      final userData = userSnap.data() ?? {};
+
+      final tastingUserName = userData['username'] ?? 'Usuario';
+      final tastingUserPhoto =
+          userData['fotoPerfil'] ?? userData['photoUrl'] ?? '';
+
+      // Local
+      String venueName = '—';
+      if (venueId != null) {
+        final venueSnap = await FirebaseFirestore.instance
+            .collection('venues')
+            .doc(venueId)
+            .get();
+        if (venueSnap.exists) {
+          venueName = venueSnap.data()?['name'] ?? '—';
+        }
+      }
+
+      // Comentarios de esta degustación
+      final commentsSnap = await tastingDoc.reference
           .collection('comentarios')
-          .orderBy('fecha', descending: false)
+          .orderBy('fecha')
           .get();
 
-      for (final c in qsComments.docs) {
-        final data = c.data();
-        all.add({
-          'nombreAutor': data['nombreAutor'] ?? 'Anónimo',
-          'fotoAutor': (data['fotoAutor'] ?? '').toString(),
-          'texto': data['texto'] ?? '',
-          'fecha': data['fecha'],
-        });
-      }
+      if (commentsSnap.docs.isEmpty) continue;
+
+      final comments = commentsSnap.docs.map((c) {
+        final d = c.data();
+        return {
+          'text': d['texto'],
+          'authorName': d['nombreAutor'],
+          'authorPhoto': d['fotoAutor'],
+          'date': d['fecha'],
+        };
+      }).toList();
+
+      grouped.add({
+        'tastingId': tastingId,
+        'tastingUserName': tastingUserName,
+        'tastingUserPhoto': tastingUserPhoto,
+        'tastingCreatedAt': createdAt,
+        'tastingRating': rating,
+        'venueName': venueName,
+        'comments': comments,
+      });
     }
 
-    // Ordena por fecha si existe
-    all.sort((a, b) {
-      final fa = a['fecha'];
-      final fb = b['fecha'];
-      if (fa == null && fb == null) return 0;
-      if (fa == null) return -1;
-      if (fb == null) return 1;
-      return (fa as Timestamp).compareTo(fb as Timestamp);
+    // Ordenar por fecha de creación de la degustación (más reciente arriba)
+    grouped.sort((a, b) {
+      final fa = a['tastingCreatedAt'];
+      final fb = b['tastingCreatedAt'];
+      if (fa == null || fb == null) return 0;
+      return (fb as Timestamp).compareTo(fa as Timestamp);
     });
 
-    return all;
+    return grouped;
   }
 
   /// Comentarios de la degustación (o agregados si es vista previa desde búsqueda)
   Widget _buildCommentsSection() {
     final isPreview = widget.tastingId == 'preview';
 
-    Widget commentsList;
-    if (isPreview) {
-      // Agrega comentarios de todas las degustaciones de esta cerveza
-      commentsList = FutureBuilder<List<Map<String, dynamic>>>(
-        future: _loadAllCommentsForBeer(),
-        builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
-          final comentarios = snap.data ?? [];
-          if (comentarios.isEmpty) {
-            return const Text(
-              'Esta cerveza aún no tiene comentarios 🍺',
-              style: TextStyle(color: Colors.black54),
-            );
-          }
-          return AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            child: Column(
-              key: ValueKey(comentarios.length),
-              children: comentarios
-                  .map(
-                    (c) => _CommentTile(
-                      nombreAutor: c['nombreAutor'] ?? 'Anónimo',
-                      fotoAutor: (c['fotoAutor'] ?? '').toString(),
-                      texto: c['texto'] ?? '',
-                    ),
-                  )
-                  .toList(),
-            ),
-          );
-        },
-      );
-    } else {
-      // Comentarios de la degustación concreta (tiempo real)
+    if (!isPreview) {
+      // Caso degustación concreta → comentarios normales (sin cambios)
       final commentsStream = FirebaseFirestore.instance
           .collection('tastings')
           .doc(widget.tastingId)
           .collection('comentarios')
-          .orderBy('fecha', descending: false)
+          .orderBy('fecha')
           .snapshots();
 
-      commentsList = StreamBuilder<QuerySnapshot>(
-        stream: commentsStream,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: CircularProgressIndicator(),
-              ),
-            );
-          }
+      return Container(
+        margin: const EdgeInsets.only(top: 24),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Color.fromARGB(255, 230, 227, 210),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: StreamBuilder<QuerySnapshot>(
+          stream: commentsStream,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-          final comentarios = snapshot.data?.docs ?? [];
-          if (comentarios.isEmpty) {
-            return const Text(
-              'No hay comentarios todavía. ¡Sé el primero en opinar! 🍺',
-              style: TextStyle(color: Colors.black54),
-            );
-          }
+            final docs = snapshot.data!.docs;
+            if (docs.isEmpty) {
+              return const Text(
+                'No hay comentarios todavía. ¡Sé el primero en opinar! 🍺',
+                style: TextStyle(color: Colors.black54),
+              );
+            }
 
-          return AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            child: Column(
-              key: ValueKey(comentarios.length),
-              children: comentarios.map((doc) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: docs.map((doc) {
                 final c = doc.data() as Map<String, dynamic>;
                 return _CommentTile(
                   nombreAutor: c['nombreAutor'] ?? 'Anónimo',
@@ -196,158 +201,185 @@ class _BeerDetailScreenState extends State<BeerDetailScreen> {
                   texto: c['texto'] ?? '',
                 );
               }).toList(),
-            ),
-          );
-        },
+            );
+          },
+        ),
       );
     }
 
+    // Caso preview → comentarios agregados de TODAS las degustaciones
     return Container(
       margin: const EdgeInsets.only(top: 24),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.deepPurple[50],
+        color: Color.fromARGB(255, 230, 227, 210),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            isPreview
-                ? '💬 Comentarios de esta cerveza'
-                : '💬 Comentarios de esta degustación',
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          commentsList,
-          const Divider(height: 20, thickness: 1, color: Colors.deepPurple),
-          Row(
+      child: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _loadAllCommentsForBeer(),
+        builder: (context, snap) {
+          if (!snap.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final comentarios = snap.data!;
+          if (comentarios.isEmpty) {
+            return const Text(
+              'Esta cerveza aún no tiene comentarios en degustaciones',
+              style: TextStyle(color: Colors.black54),
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: TextField(
-                  controller: _commentController,
-                  focusNode: _focusNode,
-                  decoration: InputDecoration(
-                    hintText: 'Escribe un comentario...',
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide.none,
-                    ),
+              Row(
+                children: const [
+                  Icon(
+                    Icons.chat_bubble_outline,
+                    size: 22,
+                    color: Colors.black87,
                   ),
-                ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Comentarios en degustaciones de esta cerveza',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.deepPurple[300],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.send_rounded, color: Colors.white),
-                  onPressed: () async {
-                    final texto = _commentController.text.trim();
-                    if (texto.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('El comentario está vacío 🍺'),
-                        ),
-                      );
-                      return;
-                    }
+              const SizedBox(height: 12),
 
-                    try {
-                      final user = FirebaseAuth.instance.currentUser;
-                      if (user == null) return;
+              ...comentarios.map((tasting) {
+                final comments = tasting['comments'] as List;
 
-                      // Datos del usuario
-                      final userDoc = await FirebaseFirestore.instance
-                          .collection('users')
-                          .doc(user.uid)
-                          .get();
-                      final userData = userDoc.data() ?? {};
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // CABECERA DE LA DEGUSTACIÓN
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 22,
+                            backgroundImage:
+                                (tasting['tastingUserPhoto'] ?? '')
+                                    .toString()
+                                    .isNotEmpty
+                                ? NetworkImage(tasting['tastingUserPhoto'])
+                                : const AssetImage('assets/default_avatar.png')
+                                      as ImageProvider,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  tasting['tastingUserName'],
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  tasting['venueName'],
+                                  style: const TextStyle(color: Colors.black87),
+                                ),
+                                // 👉 FECHA FORMATEADA DE LA DEGUSTACIÓN
+                                if (tasting['tastingCreatedAt'] != null)
+                                  Text(
+                                    (() {
+                                      final date =
+                                          (tasting['tastingCreatedAt']
+                                                  as Timestamp)
+                                              .toDate();
+                                      final day = date.day.toString().padLeft(
+                                        2,
+                                        '0',
+                                      );
+                                      final month = date.month
+                                          .toString()
+                                          .padLeft(2, '0');
+                                      final year = date.year.toString();
+                                      return "$day/$month/$year";
+                                    })(),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.black54,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            '${tasting['tastingRating']} ★',
+                            style: const TextStyle(
+                              color: Colors.amber,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
 
-                      final nombreAutor = _firstNonEmpty([
-                        userData['username'],
-                        user.displayName,
-                        user.email,
-                        'Anónimo',
-                      ]);
+                      const SizedBox(height: 12),
 
-                      final fotoAutor = _firstNonEmpty([
-                        userData['photoUrl'],
-                        userData['fotoPerfil'],
-                        user.photoURL,
-                      ]);
-
-                      // Dónde guardar el comentario
-                      String tastingTargetId = widget.tastingId;
-
-                      if (tastingTargetId == 'preview') {
-                        // Reutiliza una degustación del usuario si existe, si no, crea
-                        final myTastings = await FirebaseFirestore.instance
-                            .collection('tastings')
-                            .where('userUid', isEqualTo: user.uid)
-                            .where('beerId', isEqualTo: widget.beerId)
-                            .limit(1)
-                            .get();
-
-                        if (myTastings.docs.isNotEmpty) {
-                          tastingTargetId = myTastings.docs.first.id;
-                        } else {
-                          final newTastingRef = await FirebaseFirestore.instance
-                              .collection('tastings')
-                              .add({
-                                'userUid': user.uid,
-                                'beerId': widget.beerId,
-                                'createdAt': FieldValue.serverTimestamp(),
-                                'rating': 0,
-                                'comment': '',
-                              });
-                          tastingTargetId = newTastingRef.id;
-                        }
-                      }
-
-                      // Guardar comentario
-                      await FirebaseFirestore.instance
-                          .collection('tastings')
-                          .doc(tastingTargetId)
-                          .collection('comentarios')
-                          .add({
-                            'beerId':
-                                widget.beerId, // útil para futuras consultas
-                            'autorId': user.uid,
-                            'nombreAutor': nombreAutor,
-                            'fotoAutor': fotoAutor,
-                            'texto': texto,
-                            'fecha': FieldValue.serverTimestamp(),
-                          });
-
-                      _commentController.clear();
-                      FocusScope.of(context).unfocus();
-
-                      if (widget.tastingId == 'preview') {
-                        // Refresca la Future de comentarios agregados
-                        setState(() {});
-                      }
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Comentario publicado 🍻'),
-                        ),
-                      );
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Error al publicar: $e')),
-                      );
-                    }
-                  },
-                ),
-              ),
+                      // COMENTARIOS
+                      ...comments.map((com) {
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 40, bottom: 12),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                radius: 16,
+                                backgroundImage:
+                                    (com['authorPhoto'] ?? '')
+                                        .toString()
+                                        .isNotEmpty
+                                    ? NetworkImage(com['authorPhoto'])
+                                    : const AssetImage(
+                                            'assets/default_avatar.png',
+                                          )
+                                          as ImageProvider,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      com['authorName'] ?? 'Anónimo',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    Text(com['text']),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ],
+                  ),
+                );
+              }),
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -389,13 +421,60 @@ class _BeerDetailScreenState extends State<BeerDetailScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if ((beer['photoUrl'] ?? '').isNotEmpty)
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      beer['photoUrl'],
-                      height: 200,
-                      fit: BoxFit.cover,
+                // Imagen oficial de la cerveza (mismo comportamiento que TastingDetailScreen)
+                if (beer['photoUrl'] != null &&
+                    beer['photoUrl'].toString().isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Center(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 6,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              maxWidth: 360,
+                              maxHeight: 460,
+                            ),
+                            child: Image.network(
+                              beer['photoUrl'],
+                              fit: BoxFit.contain,
+                              loadingBuilder:
+                                  (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return const SizedBox(
+                                      height: 200,
+                                      child: Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    );
+                                  },
+                              errorBuilder: (context, error, stackTrace) {
+                                return const SizedBox(
+                                  height: 200,
+                                  child: Center(
+                                    child: Icon(
+                                      Icons.broken_image,
+                                      size: 120,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 const SizedBox(height: 20),
