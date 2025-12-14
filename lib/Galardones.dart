@@ -28,7 +28,7 @@ class GalardonesScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Galardones"),
-        leading: BackButton(onPressed: () => context.pop()), // 🔙 volver atrás
+        leading: BackButton(onPressed: () => context.pop()), // volver atrás
       ),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: _loadBadges(uid),

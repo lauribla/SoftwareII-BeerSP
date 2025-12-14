@@ -401,7 +401,7 @@ Future<void> _showAwardDialog(UnlockedAward award) async {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'Nuevo galardon',
+              'Nuevo Galardón',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
