@@ -162,7 +162,7 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
               _buildDropdown(
                 "Color",
                 color,
-                ['Dorado claro', 'Ambar claro', 'Marrón oscuro', 'Negro opaco'],
+                ['Dorado claro', 'Amarillo dorado', 'Ambar claro', 'Marrón oscuro', 'Negro opaco'],
                 (v) => setState(() => color = v!),
               ),
               const SizedBox(height: 16),

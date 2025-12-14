@@ -1,9 +1,9 @@
-import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import 'HomeScreen.dart';
 import 'AuthGateScreen.dart';
 import 'AgeGateScreen.dart';
+import 'RecuperarContrasena.dart';
 import 'SignInScreen.dart';
 import 'SignUpScreen.dart';
 import 'CrearDegustacionScreen.dart';
@@ -15,8 +15,8 @@ import 'ActivityFeedScreen.dart';
 import 'PerfilAjustes.dart';
 import 'FriendsScreen.dart';
 import 'BeerDetailScreen.dart';
-import 'NotificacionesScreen.dart'; 
-import 'DegustacionesAmigosScreen.dart'; 
+import 'NotificacionesScreen.dart';
+import 'DegustacionesAmigosScreen.dart';
 import 'TastingDetailScreen.dart';
 
 final appRouter = GoRouter(
@@ -50,19 +50,19 @@ final appRouter = GoRouter(
     ),
 
     GoRoute(
-  path: '/tastings/new',
-  builder: (context, state) => const CrearDegustacionScreen(),
-),
+      path: '/tastings/new',
+      builder: (context, state) => const CrearDegustacionScreen(),
+    ),
 
-GoRoute(
-  path: '/cerveza/new',
-  builder: (context, state) => const CrearCervezaScreen(),
-),
+    GoRoute(
+      path: '/cerveza/new',
+      builder: (context, state) => const CrearCervezaScreen(),
+    ),
 
-GoRoute(
-  path: '/local/new',
-  builder: (context, state) => const CrearLocalScreen(),
-),
+    GoRoute(
+      path: '/local/new',
+      builder: (context, state) => const CrearLocalScreen(),
+    ),
 
     //  Top degustaciones
     GoRoute(
@@ -70,7 +70,7 @@ GoRoute(
       builder: (context, state) => const TopDegustacionesScreen(),
     ),
 
-    // Perfil / Ajustes
+    // Perfil + Ajustes
     GoRoute(
       path: '/profile',
       builder: (context, state) => const PerfilAjustesScreen(),
@@ -100,12 +100,14 @@ GoRoute(
       builder: (context, state) => const NotificacionesScreen(),
     ),
 
-    // Detalle de cerveza
+    // Detalle de cerveza (con tastingId)
     GoRoute(
       path: '/beer/detail',
       builder: (context, state) {
-        final beerId = state.extra as String;
-        return BeerDetailScreen(beerId: beerId);
+        final extra = state.extra as Map<String, dynamic>;
+        final beerId = extra['beerId'] as String;
+        final tastingId = extra['tastingId'] as String;
+        return BeerDetailScreen(beerId: beerId, tastingId: tastingId);
       },
     ),
 
@@ -117,11 +119,17 @@ GoRoute(
 
     // Detalle de degustación
     GoRoute(
-      path: '/tasting/detail',
+      path: '/tasting/:id',
       builder: (context, state) {
-        final beerId = state.extra as String;
-        return TastingDetailScreen(beerId: beerId);
+        final tastingId = state.pathParameters['id']!;
+        return TastingDetailScreen(tastingId: tastingId);
       },
+    ),
+
+    // Recuperar contraseña
+    GoRoute(
+      path: '/auth/password_reset',
+      builder: (context, state) => RecuperarContrasena(),
     ),
   ],
 );
