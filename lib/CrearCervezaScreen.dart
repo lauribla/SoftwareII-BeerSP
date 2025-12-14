@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:country_picker/country_picker.dart';
+import 'award_manager.dart';
+
 
 class CrearCervezaScreen extends StatefulWidget {
   const CrearCervezaScreen({super.key});
@@ -74,6 +76,61 @@ class _CrearCervezaScreenState extends State<CrearCervezaScreen> {
         'createdBy': uid,
         'createdAt': FieldValue.serverTimestamp(),
       });
+
+      // --- Galardon por crear cervezas ---
+final userRef =
+    FirebaseFirestore.instance.collection('users').doc(uid);
+
+// Incrementar contador
+await userRef.set({
+  'stats': {
+    'beersCreated': FieldValue.increment(1),
+  }
+}, SetOptions(merge: true));
+
+// Leer valor actualizado
+final userSnap = await userRef.get();
+final stats = (userSnap.data()?['stats'] as Map<String, dynamic>?) ?? {};
+
+final int beersCreated =
+    stats['beersCreated'] is num
+        ? (stats['beersCreated'] as num).toInt()
+        : 0;
+
+// Comprobar galardones
+final newAwards = await AwardManager.checkAndGrantAwards(
+  uid: uid,
+  metric: 'beersCreated',
+  value: beersCreated,
+);
+
+// Mostrar popup
+if (mounted && newAwards.isNotEmpty) {
+  for (final award in newAwards) {
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Nuevo galardon'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.network(award.imageUrl, height: 80),
+            const SizedBox(height: 12),
+            Text(award.name),
+            Text('Nivel ${award.level}'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Vale'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

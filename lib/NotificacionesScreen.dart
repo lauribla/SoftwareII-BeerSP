@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'award_manager.dart';
+
 
 class NotificacionesScreen extends StatefulWidget {
   const NotificacionesScreen({super.key});
@@ -47,7 +49,7 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     );
   }
 
-  /// --- 🔔 Solicitudes de amistad pendientes ---
+  /// --- Solicitudes de amistad pendientes ---
   Widget _buildFriendRequestsSection() {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -107,6 +109,8 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
   }
 
   Future<void> _acceptFriendRequest(String requestId, String fromId) async {
+    print('ACCEPT FRIEND REQUEST -> requestId=$requestId fromId=$fromId');
+    
     final uid = user?.uid;
     if (uid == null) return;
 
@@ -114,15 +118,16 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
     final requestRef =
         FirebaseFirestore.instance.collection('friend_requests').doc(requestId);
 
-    // ✅ Actualizar estado de la solicitud
+    // Actualizar estado de la solicitud
     batch.update(requestRef, {'status': 'accepted'});
 
-    // ✅ Añadir a la lista de amigos en ambas direcciones
+    // Añadir a la lista de amigos en ambas direcciones
     final friendsRef = FirebaseFirestore.instance.collection('friends');
     batch.set(friendsRef.doc('${uid}_$fromId'), {'user1': uid, 'user2': fromId});
     batch.set(friendsRef.doc('${fromId}_$uid'), {'user1': fromId, 'user2': uid});
 
     await batch.commit();
+
   }
 
   Future<void> _rejectFriendRequest(String requestId) async {
@@ -132,7 +137,50 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
         .update({'status': 'rejected'});
   }
 
-  /// --- 🏅 Notificaciones de galardones ---
+  Future<void> _showAwardDialog(UnlockedAward award) async {
+  if (!mounted) return;
+
+  await showDialog(
+    context: context,
+    barrierDismissible: true,
+    builder: (ctx) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Nuevo galardon',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            CircleAvatar(
+              radius: 32,
+              backgroundImage: NetworkImage(award.imageUrl),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              award.name,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            Text('Nivel ${award.level}'),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Vale'),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+
+  /// --- Notificaciones de galardones ---
   Widget _buildBadgesNotificationsSection() {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
