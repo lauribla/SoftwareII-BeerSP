@@ -18,10 +18,12 @@ class UnlockedAward {
 }
 
 class AwardManager {
-  static Future<List<UnlockedAward>> checkAndGrantTastingAwards({
+  static Future<List<UnlockedAward>> checkAndGrantAwards({
     required String uid,
-    required int tastingsTotal,
+    required String metric,
+    required int value,
   }) async {
+    print('CHECK AWARDS -> uid=$uid metric=$metric value=$value');
     final db = FirebaseFirestore.instance;
     final config = await AwardConfigService.loadAwards();
     final List<dynamic> allAwards = config['galardones'] ?? [];
@@ -31,22 +33,29 @@ class AwardManager {
     for (final raw in allAwards) {
       final award = Map<String, dynamic>.from(raw);
 
-      if (award['metric'] != 'tastingsTotal') continue;
+      final String awardMetric = (award['metric'] ?? '').toString();
+      if (awardMetric != metric) continue;
 
-      final String awardId = award['id'];
+      final String awardId = (award['id'] ?? '').toString();
+      if (awardId.isEmpty) continue;
+
       final List<int> niveles =
-          (award['niveles'] as List).map((e) => (e as num).toInt()).toList();
+          (award['niveles'] as List? ?? [])
+              .map((e) => (e as num).toInt())
+              .toList();
 
-      // Calcular nivel
+      if (niveles.isEmpty) continue;
+
       int newLevel = 0;
       for (int i = 0; i < niveles.length; i++) {
-        if (tastingsTotal >= niveles[i]) newLevel = i + 1;
+        if (value >= niveles[i]) newLevel = i + 1;
       }
 
       if (newLevel == 0) continue;
 
       final badgeRef =
           db.collection('users').doc(uid).collection('badges').doc(awardId);
+
       final badgeSnap = await badgeRef.get();
 
       final int oldLevel = badgeSnap.data()?['level'] is num
@@ -63,6 +72,7 @@ class AwardManager {
             'name': award['nombre'],
             'description': award['descripcion'],
             'imageUrl': award['imagen'],
+            'metric': awardMetric,
             'earnedAt': FieldValue.serverTimestamp(),
           },
           SetOptions(merge: true),
@@ -83,6 +93,7 @@ class AwardManager {
         'uid': uid,
         'nombre': award['nombre'],
         'nivel': newLevel,
+        'metric': awardMetric,
         'fecha': FieldValue.serverTimestamp(),
         'tipo': 'galardon',
       });
@@ -90,14 +101,26 @@ class AwardManager {
       result.add(
         UnlockedAward(
           id: awardId,
-          name: award['nombre'],
-          description: award['descripcion'],
-          imageUrl: award['imagen'],
+          name: (award['nombre'] ?? '').toString(),
+          description: (award['descripcion'] ?? '').toString(),
+          imageUrl: (award['imagen'] ?? '').toString(),
           level: newLevel,
         ),
       );
     }
 
     return result;
+  }
+
+  // Si quieres, puedes mantener compatibilidad temporal mientras migras llamadas:
+  static Future<List<UnlockedAward>> checkAndGrantTastingAwards({
+    required String uid,
+    required int tastingsTotal,
+  }) {
+    return checkAndGrantAwards(
+      uid: uid,
+      metric: 'tastingsTotal',
+      value: tastingsTotal,
+    );
   }
 }

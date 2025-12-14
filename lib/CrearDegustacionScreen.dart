@@ -191,10 +191,12 @@ class _CrearDegustacionScreenState extends State<CrearDegustacionScreen> {
       }, SetOptions(merge: true));
 
       // Comprobar si hay nuevos galardones por degustaciones
-      final newAwards = await AwardManager.checkAndGrantTastingAwards(
+      final newAwards = await AwardManager.checkAndGrantAwards(
         uid: myUid,
-        tastingsTotal: newTastingsTotal,
+        metric: 'tastingsTotal',
+        value: newTastingsTotal,
       );
+
 
       if (mounted && newAwards.isNotEmpty) {
         for (final award in newAwards) {

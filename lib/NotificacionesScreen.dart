@@ -109,6 +109,8 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
   }
 
   Future<void> _acceptFriendRequest(String requestId, String fromId) async {
+    print('ACCEPT FRIEND REQUEST -> requestId=$requestId fromId=$fromId');
+    
     final uid = user?.uid;
     if (uid == null) return;
 
@@ -141,9 +143,10 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
       }
     }, SetOptions(merge: true));
 
-    final newAwards = await AwardManager.checkAndGrantTastingAwards(
+    final newAwards = await AwardManager.checkAndGrantAwards(
       uid: uid,
-      tastingsTotal: newFriendsCount, // reutilizamos el motor
+      metric: 'friendsCount',
+      value: newFriendsCount,
     );
 
     if (mounted && newAwards.isNotEmpty) {
@@ -160,6 +163,49 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
         .doc(requestId)
         .update({'status': 'rejected'});
   }
+
+  Future<void> _showAwardDialog(UnlockedAward award) async {
+  if (!mounted) return;
+
+  await showDialog(
+    context: context,
+    barrierDismissible: true,
+    builder: (ctx) {
+      return AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Nuevo galardon',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            CircleAvatar(
+              radius: 32,
+              backgroundImage: NetworkImage(award.imageUrl),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              award.name,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            Text('Nivel ${award.level}'),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Vale'),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
 
   /// --- Notificaciones de galardones ---
   Widget _buildBadgesNotificationsSection() {
