@@ -11,7 +11,8 @@ dependencies:
   google_fonts: ^6.1.0
   flutter:
     sdk: flutter
-
+  geolocator: ^10.1.0
+  geocoding: ^2.1.0
   country_picker: ^2.0.16
   # Iconos estilo iOS
   cupertino_icons: ^1.0.8

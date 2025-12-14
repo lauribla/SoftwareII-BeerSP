@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
 import 'package:async/async.dart';
 import 'BeerDetailScreen.dart';
+import 'VenueDetailScreen.dart';
 import 'AvatarUsuario.dart'; // Nuevo import
 
 class HomeScreen extends StatelessWidget {
@@ -1231,8 +1232,16 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
                                       ),
                                     ),
                                   );
+                                } else if (r['tipo'] == 'Local') {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => VenueDetailScreen(
+                                        venueId: r['venueId'], // o el ID que uses para locales
+                                      ),
+                                    ),
+                                  );
                                 }
-                                // Add navigation for Locales if needed
                               },
                             );
                           }).toList(),
@@ -1500,7 +1509,16 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
                               ),
                             );
                           }
-                          // Add navigation for Locales if needed
+                           else if (r['tipo'] == 'Local') {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => VenueDetailScreen(
+                                  venueId: r['venueId'],
+                                ),
+                              ),
+                            );
+                          }
                         },
                       );
                     }).toList(),
