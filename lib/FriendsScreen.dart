@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
+import 'award_manager.dart';
 
 class FriendsScreen extends StatefulWidget {
   const FriendsScreen({super.key});
@@ -44,14 +45,72 @@ class _FriendsScreenState extends State<FriendsScreen>
   }
 
   Future<void> _sendFriendRequest(String otherUid) async {
-    final myUid = FirebaseAuth.instance.currentUser!.uid;
-    await FirebaseFirestore.instance.collection('users').doc(otherUid).update({
-      'friendRequests': FieldValue.arrayUnion([myUid]),
-    });
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text("Solicitud enviada")));
+  final myUid = FirebaseAuth.instance.currentUser!.uid;
+
+  
+  await FirebaseFirestore.instance.collection('users').doc(otherUid).update({
+    'friendRequests': FieldValue.arrayUnion([myUid]),
+  });
+
+  
+  final userRef =
+      FirebaseFirestore.instance.collection('users').doc(myUid);
+
+  await userRef.set({
+    'stats': {
+      'friendRequestsSent': FieldValue.increment(1),
+    }
+  }, SetOptions(merge: true));
+
+  final userSnap = await userRef.get();
+  final stats = (userSnap.data()?['stats'] as Map<String, dynamic>?) ?? {};
+
+  final int sent =
+      stats['friendRequestsSent'] is num
+          ? (stats['friendRequestsSent'] as num).toInt()
+          : 0;
+
+  
+  final newAwards = await AwardManager.checkAndGrantAwards(
+    uid: myUid,
+    metric: 'friendRequestsSent',
+    value: sent,
+  );
+
+  //  Mostrar popup
+  if (mounted && newAwards.isNotEmpty) {
+    for (final award in newAwards) {
+      await showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Nuevo galardon'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.network(award.imageUrl, height: 80),
+              const SizedBox(height: 12),
+              Text(award.name),
+              Text('Nivel ${award.level}'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Vale'),
+            ),
+          ],
+        ),
+      );
+    }
   }
+
+  if (mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Solicitud enviada")),
+    );
+  }
+}
+
 
   Future<void> _removeFriend(String friendUid) async {
     final myUid = FirebaseAuth.instance.currentUser!.uid;
