@@ -128,33 +128,6 @@ class _NotificacionesScreenState extends State<NotificacionesScreen> {
 
     await batch.commit();
 
-        // --- Actualizar contador de amigos y comprobar galardones ---
-    final userRef = FirebaseFirestore.instance.collection('users').doc(uid);
-    final userSnap = await userRef.get();
-    final stats = (userSnap.data()?['stats'] as Map<String, dynamic>?) ?? {};
-
-    final int currentFriends =
-        stats['friendsCount'] is num ? (stats['friendsCount'] as num).toInt() : 0;
-    final int newFriendsCount = currentFriends + 1;
-
-    await userRef.set({
-      'stats': {
-        'friendsCount': FieldValue.increment(1),
-      }
-    }, SetOptions(merge: true));
-
-    final newAwards = await AwardManager.checkAndGrantAwards(
-      uid: uid,
-      metric: 'friendsCount',
-      value: newFriendsCount,
-    );
-
-    if (mounted && newAwards.isNotEmpty) {
-      for (final award in newAwards) {
-        await _showAwardDialog(award);
-      }
-    }
-
   }
 
   Future<void> _rejectFriendRequest(String requestId) async {
