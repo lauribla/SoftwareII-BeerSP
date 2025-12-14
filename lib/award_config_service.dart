@@ -12,7 +12,7 @@ class AwardConfigService {
         .get();
 
     if (!snap.exists) {
-      throw Exception('No se encontro config/awards en Firestore');
+      throw Exception('No se encontró config/awards en Firestore');
     }
 
     final data = snap.data();

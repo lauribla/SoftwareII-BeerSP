@@ -83,7 +83,7 @@ class _FriendsScreenState extends State<FriendsScreen>
       await showDialog(
         context: context,
         builder: (_) => AlertDialog(
-          title: const Text('Nuevo galardon'),
+          title: const Text('Nuevo galardón'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
